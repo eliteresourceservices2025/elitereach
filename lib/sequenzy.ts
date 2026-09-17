@@ -535,20 +535,6 @@ export async function updateNotificationPreferences(
   await request("/notification-preferences", { method: "PATCH", body: { notificationPreferences: preferences } });
 }
 
-// ---- Widgets (popups) ----
-//
-// Signup forms and embeds are already covered by the Forms feature. Popups
-// are a separate Sequenzy resource with no documented creation schema via
-// the API, so this only lists what already exists — creating/editing a
-// popup happens in Sequenzy's own dashboard for now.
-
-export type PopupSummary = { id: string; name?: string; status?: string };
-
-export async function listPopups(): Promise<{ popups: PopupSummary[]; manageUrl: string | null }> {
-  const res = await request<{ success: boolean; popups: PopupSummary[]; url?: string }>("/popups");
-  return { popups: res.popups, manageUrl: res.url ?? null };
-}
-
 // ---- Campaigns ----
 
 export type CampaignStatus =

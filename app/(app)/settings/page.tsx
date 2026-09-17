@@ -5,7 +5,6 @@ import {
   getTestEmailCount,
   getCompanyProfile,
   getNotificationPreferences,
-  listPopups,
   MONTHLY_EMAIL_QUOTA,
 } from "@/lib/sequenzy";
 import packageJson from "@/package.json";
@@ -45,24 +44,15 @@ async function safeNotificationPreferences() {
   }
 }
 
-async function safePopups() {
-  try {
-    return await listPopups();
-  } catch {
-    return null;
-  }
-}
-
 export default async function SettingsPage() {
   const session = await getSession();
   if (!session?.isAdmin) redirect("/");
 
-  const [metrics, testEmails, company, notifications, popups] = await Promise.all([
+  const [metrics, testEmails, company, notifications] = await Promise.all([
     safeMetrics(),
     safeTestCount(),
     safeCompanyProfile(),
     safeNotificationPreferences(),
-    safePopups(),
   ]);
   const apiKey = process.env.SEQUENZY_API_KEY ?? "";
   const masked = apiKey ? `${apiKey.slice(0, 8)}${"•".repeat(Math.max(0, apiKey.length - 12))}${apiKey.slice(-4)}` : "Not set";
@@ -159,45 +149,6 @@ export default async function SettingsPage() {
         )}
       </div>
 
-      <div className="max-w-lg space-y-2 rounded-xl bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-elite-navy-dark">Widgets</h2>
-        <p className="text-xs text-gray-400">Embeds, popups, and signup forms for your site.</p>
-        <p className="text-sm text-gray-700">
-          Signup forms and embed codes are managed on the <a href="/forms" className="text-elite-violet hover:underline">Forms</a>{" "}
-          page.
-        </p>
-        {popups ? (
-          popups.popups.length === 0 ? (
-            <p className="text-sm text-gray-400">No popups yet.</p>
-          ) : (
-            <ul className="text-sm text-gray-700">
-              {popups.popups.map((p) => (
-                <li key={p.id}>
-                  {p.name ?? p.id} {p.status && <span className="text-xs text-gray-400">({p.status})</span>}
-                </li>
-              ))}
-            </ul>
-          )
-        ) : (
-          <p className="text-sm text-gray-400">Unable to reach Sequenzy to load popups.</p>
-        )}
-        {popups?.manageUrl && (
-          <a href={popups.manageUrl} target="_blank" rel="noreferrer" className="inline-block text-sm text-elite-violet hover:underline">
-            Manage popups in Sequenzy →
-          </a>
-        )}
-        <p className="text-xs text-gray-400">
-          Popup creation isn&apos;t available through Sequenzy&apos;s API yet, so new popups are built directly in Sequenzy.
-        </p>
-      </div>
-
-      <div className="max-w-lg space-y-2 rounded-xl bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-elite-navy-dark">Labels &amp; goals</h2>
-        <p className="text-sm text-gray-400">
-          Sequenzy&apos;s API doesn&apos;t currently expose endpoints for campaign/sequence labels or conversion goals, so
-          these can&apos;t be managed from EliteReach yet — manage them directly in the Sequenzy dashboard for now.
-        </p>
-      </div>
     </div>
   );
 }
