@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import type { EmailTheme } from "@/lib/sequenzy";
+import { wrapBrandedEmail, type EmailBrand } from "@/lib/email-template";
 import { RichTextEditor } from "@/components/email/RichTextEditor";
 import { AIGenerator } from "@/components/email/AIGenerator";
 import { GrapesEmailBuilder } from "@/components/email/GrapesEmailBuilder";
+import { DevicePreview } from "@/components/email/DevicePreview";
 
 export type StepValue = {
   subject: string;
@@ -27,16 +30,25 @@ export function StepEditor({
   onChange,
   onRemove,
   removable,
+  theme,
+  brand,
 }: {
   index: number;
   value: StepValue;
   onChange: (value: StepValue) => void;
   onRemove: () => void;
   removable: boolean;
+  theme?: EmailTheme;
+  brand?: EmailBrand;
 }) {
   const [mode, setMode] = useState<"write" | "ai" | "design">("write");
   const [designHtml, setDesignHtml] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
   const isPreset = DELAY_PRESETS.some((p) => p.value === value.delayDays);
+  const previewHtml =
+    value.wrap === false
+      ? value.bodyHtml || "<p></p>"
+      : wrapBrandedEmail({ previewText: value.previewText, bodyHtml: value.bodyHtml || "<p></p>", theme, brand });
 
   return (
     <div className="space-y-3 rounded-xl bg-white p-5 shadow-sm">
@@ -135,6 +147,16 @@ export function StepEditor({
       ) : (
         <RichTextEditor value={value.bodyHtml} onChange={(bodyHtml) => onChange({ ...value, bodyHtml, wrap: true })} />
       )}
+
+      <button
+        type="button"
+        onClick={() => setShowPreview((v) => !v)}
+        className="rounded-lg border border-elite-violet/30 px-4 py-2 text-sm font-medium text-elite-navy-dark hover:bg-elite-violet/5"
+      >
+        {showPreview ? "Hide preview" : "Preview"}
+      </button>
+
+      {showPreview && <DevicePreview html={previewHtml} />}
     </div>
   );
 }

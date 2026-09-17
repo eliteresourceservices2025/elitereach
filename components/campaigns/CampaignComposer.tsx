@@ -7,7 +7,8 @@ import { wrapBrandedEmail, type EmailBrand } from "@/lib/email-template";
 import { RichTextEditor } from "@/components/email/RichTextEditor";
 import { AIGenerator } from "@/components/email/AIGenerator";
 import { GrapesEmailBuilder } from "@/components/email/GrapesEmailBuilder";
-import { EmailPreview } from "@/components/email/EmailPreview";
+import { DevicePreview } from "@/components/email/DevicePreview";
+import { SenderReplyFields, emptySenderReply, parseEmailList, type SenderReplyValue } from "@/components/email/SenderReplyFields";
 import { RecipientSelector, type Audience } from "./RecipientSelector";
 
 type Mode = "write" | "ai" | "design" | "html";
@@ -16,10 +17,12 @@ export function CampaignComposer({
   allTags,
   theme,
   brand,
+  defaultSender,
 }: {
   allTags: Tag[];
   theme?: EmailTheme;
   brand?: EmailBrand;
+  defaultSender?: Partial<SenderReplyValue>;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("write");
@@ -30,6 +33,7 @@ export function CampaignComposer({
   const [designHtml, setDesignHtml] = useState("");
   const [rawHtml, setRawHtml] = useState("");
   const [audience, setAudience] = useState<Audience>({ type: "all" });
+  const [senderReply, setSenderReply] = useState<SenderReplyValue>(() => emptySenderReply(defaultSender));
   const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +76,12 @@ export function CampaignComposer({
           bodyHtml: currentBody,
           wrap,
           audience,
+          fromName: senderReply.fromName || undefined,
+          fromEmail: senderReply.fromEmail || undefined,
+          replyToName: senderReply.replyToName || undefined,
+          replyTo: senderReply.replyTo || undefined,
+          ccEmails: parseEmailList(senderReply.cc),
+          bccEmails: parseEmailList(senderReply.bcc),
         }),
       });
       if (!res.ok) {
@@ -121,6 +131,8 @@ export function CampaignComposer({
           <label className="mb-1 block text-xs font-medium text-gray-500">Recipients</label>
           <RecipientSelector allTags={allTags} value={audience} onChange={setAudience} />
         </div>
+
+        <SenderReplyFields value={senderReply} onChange={setSenderReply} />
 
         <div>
           <div className="mb-2 flex gap-1 rounded-lg bg-gray-100 p-1 text-sm">
@@ -204,7 +216,7 @@ export function CampaignComposer({
       {showPreview && (
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Live preview</p>
-          <EmailPreview html={previewHtml} />
+          <DevicePreview html={previewHtml} />
         </div>
       )}
     </div>

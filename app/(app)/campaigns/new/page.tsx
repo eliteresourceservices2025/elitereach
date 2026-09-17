@@ -12,14 +12,14 @@ async function safeListTags() {
 }
 
 export default async function NewCampaignPage() {
-  const [tags, { theme, brand }] = await Promise.all([safeListTags(), getEmailBranding()]);
+  const [tags, { theme, brand, defaultSender }] = await Promise.all([safeListTags(), getEmailBranding()]);
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-elite-navy-dark">New Campaign</h1>
         <p className="text-sm text-gray-500">Compose, preview, and save a draft before sending.</p>
       </div>
-      <CampaignComposer allTags={tags} theme={theme} brand={brand} />
+      <CampaignComposer allTags={tags} theme={theme} brand={brand} defaultSender={defaultSender} />
     </div>
   );
 }

@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Tag } from "@/lib/sequenzy";
+import type { Tag, EmailTheme } from "@/lib/sequenzy";
+import type { EmailBrand } from "@/lib/email-template";
 import { StepEditor, type StepValue } from "./StepEditor";
+import { SenderReplyFields, emptySenderReply, parseEmailList, type SenderReplyValue } from "@/components/email/SenderReplyFields";
 
 const MAX_STEPS = 5;
 
@@ -11,12 +13,23 @@ function emptyStep(): StepValue {
   return { subject: "", previewText: "", bodyHtml: "", delayDays: 0 };
 }
 
-export function SequenceForm({ allTags }: { allTags: Tag[] }) {
+export function SequenceForm({
+  allTags,
+  theme,
+  brand,
+  defaultSender,
+}: {
+  allTags: Tag[];
+  theme?: EmailTheme;
+  brand?: EmailBrand;
+  defaultSender?: Partial<SenderReplyValue>;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [trigger, setTrigger] = useState<"contact_added" | "tag_added">("contact_added");
   const [tagName, setTagName] = useState(allTags[0]?.name ?? "");
   const [steps, setSteps] = useState<StepValue[]>([emptyStep()]);
+  const [senderReply, setSenderReply] = useState<SenderReplyValue>(() => emptySenderReply(defaultSender));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +65,17 @@ export function SequenceForm({ allTags }: { allTags: Tag[] }) {
       const res = await fetch("/api/sequences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, trigger, tagName: trigger === "tag_added" ? tagName : undefined, steps }),
+        body: JSON.stringify({
+          name,
+          trigger,
+          tagName: trigger === "tag_added" ? tagName : undefined,
+          steps,
+          fromName: senderReply.fromName || undefined,
+          fromEmail: senderReply.fromEmail || undefined,
+          replyToName: senderReply.replyToName || undefined,
+          replyTo: senderReply.replyTo || undefined,
+          bccEmails: parseEmailList(senderReply.bcc),
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -108,6 +131,8 @@ export function SequenceForm({ allTags }: { allTags: Tag[] }) {
             You can also manually enroll any contact into this sequence later from the Contacts page.
           </p>
         </div>
+
+        <SenderReplyFields value={senderReply} onChange={setSenderReply} showCc={false} />
       </div>
 
       {steps.map((step, i) => (
@@ -118,6 +143,8 @@ export function SequenceForm({ allTags }: { allTags: Tag[] }) {
           onChange={(v) => updateStep(i, v)}
           onRemove={() => removeStep(i)}
           removable={steps.length > 1}
+          theme={theme}
+          brand={brand}
         />
       ))}
 

@@ -28,6 +28,11 @@ export async function POST(request: NextRequest) {
       name: body.name,
       trigger: body.trigger === "tag_added" ? "tag_added" : "contact_added",
       tagName: body.tagName,
+      fromName: body.fromName || undefined,
+      fromEmail: body.fromEmail || undefined,
+      replyTo: body.replyTo || undefined,
+      replyToName: body.replyToName || undefined,
+      bccEmails: Array.isArray(body.bccEmails) && body.bccEmails.length > 0 ? body.bccEmails : undefined,
       steps: body.steps.map((step: { subject: string; previewText?: string; bodyHtml: string; delayDays: number; wrap?: boolean }) => ({
         subject: step.subject,
         previewText: step.previewText,

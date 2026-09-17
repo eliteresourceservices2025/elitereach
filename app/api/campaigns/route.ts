@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
       previewText: body.previewText || undefined,
       html,
       targetLists,
+      fromName: body.fromName || undefined,
+      fromEmail: body.fromEmail || undefined,
+      replyTo: body.replyTo || undefined,
+      replyToName: body.replyToName || undefined,
+      ccEmails: Array.isArray(body.ccEmails) && body.ccEmails.length > 0 ? body.ccEmails : undefined,
+      bccEmails: Array.isArray(body.bccEmails) && body.bccEmails.length > 0 ? body.bccEmails : undefined,
     });
     return NextResponse.json(campaign, { status: 201 });
   } catch (err) {

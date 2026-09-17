@@ -474,6 +474,8 @@ export type CompanyProfile = {
   emailTheme: EmailTheme;
   defaultFromEmail: string | null;
   defaultFromName: string | null;
+  defaultReplyToName: string | null;
+  defaultReplyToEmail: string | null;
 };
 
 async function getCurrentCompanyId(): Promise<string> {
@@ -567,6 +569,12 @@ export type Campaign = {
   createdAt: string;
   url: string;
   previewUrl: string;
+  fromName?: string | null;
+  fromEmail?: string | null;
+  replyToName?: string | null;
+  replyToEmail?: string | null;
+  ccEmails?: string[] | null;
+  bccEmails?: string[] | null;
 };
 
 export type CampaignDetail = Campaign & {
@@ -598,15 +606,40 @@ export async function listCampaigns(params?: { status?: CampaignStatus; limit?: 
   };
 }
 
-export async function createCampaign(input: {
-  name: string;
-  subject: string;
-  previewText?: string;
-  html: string;
-  targetLists?: CampaignAudience;
-}): Promise<Campaign> {
-  const res = await request<{ success: boolean; campaign: Campaign }>("/campaigns", { method: "POST", body: input });
-  return res.campaign;
+/**
+ * Sender/reply-to fields shared by campaigns and sequences. `fromName` requires
+ * `fromEmail` (and vice versa isn't required), same for `replyToName`/`replyTo` —
+ * Sequenzy rejects a name sent without its paired address. `ccEmails` is
+ * campaign-only; Sequenzy silently ignores it on sequences.
+ */
+export type SenderReplyFields = {
+  fromName?: string;
+  fromEmail?: string;
+  replyTo?: string;
+  replyToName?: string;
+  ccEmails?: string[];
+  bccEmails?: string[];
+};
+
+export async function createCampaign(
+  input: {
+    name: string;
+    subject: string;
+    previewText?: string;
+    html: string;
+    targetLists?: CampaignAudience;
+  } & SenderReplyFields
+): Promise<Campaign> {
+  // Sequenzy's POST /campaigns silently ignores ccEmails/bccEmails (confirmed by
+  // testing — they're accepted on PUT but dropped on create with no error), so
+  // creating with CC/BCC set requires an immediate follow-up PUT.
+  const { ccEmails, bccEmails, ...createInput } = input;
+  const res = await request<{ success: boolean; campaign: Campaign }>("/campaigns", { method: "POST", body: createInput });
+  const campaign = res.campaign;
+  if (ccEmails?.length || bccEmails?.length) {
+    return updateCampaign(campaign.id, { ccEmails, bccEmails });
+  }
+  return campaign;
 }
 
 export async function getCampaign(id: string): Promise<CampaignDetail> {
@@ -616,7 +649,9 @@ export async function getCampaign(id: string): Promise<CampaignDetail> {
 
 export async function updateCampaign(
   id: string,
-  input: Partial<{ name: string; subject: string; previewText: string; html: string; targetLists: CampaignAudience }>
+  input: Partial<
+    { name: string; subject: string; previewText: string; html: string; targetLists: CampaignAudience } & SenderReplyFields
+  >
 ): Promise<Campaign> {
   const res = await request<{ success: boolean; campaign: Campaign }>(`/campaigns/${encodeURIComponent(id)}`, {
     method: "PUT",
@@ -743,6 +778,11 @@ export type SequenceEmailStep = {
 export type SequenceDetail = Sequence & {
   trigger: string;
   emails: SequenceEmailStep[];
+  fromName?: string | null;
+  fromEmail?: string | null;
+  replyToName?: string | null;
+  replyToEmail?: string | null;
+  bccEmails?: string[] | null;
 };
 
 export type SequenceStepInput = {
@@ -757,16 +797,21 @@ export async function listSequences(): Promise<{ data: Sequence[] }> {
   return { data: res.sequences };
 }
 
-export async function createSequence(input: {
-  name: string;
-  trigger: SequenceTrigger;
-  tagName?: string;
-  bccEmails?: string[];
-  steps: SequenceStepInput[];
-}): Promise<{ id: string }> {
+export async function createSequence(
+  input: {
+    name: string;
+    trigger: SequenceTrigger;
+    tagName?: string;
+    steps: SequenceStepInput[];
+  } & Pick<SenderReplyFields, "fromName" | "fromEmail" | "replyTo" | "replyToName" | "bccEmails">
+): Promise<{ id: string }> {
   const body: Record<string, unknown> = {
     name: input.name,
     trigger: input.trigger,
+    fromName: input.fromName || undefined,
+    fromEmail: input.fromEmail || undefined,
+    replyTo: input.replyTo || undefined,
+    replyToName: input.replyToName || undefined,
     bccEmails: input.bccEmails && input.bccEmails.length > 0 ? input.bccEmails : undefined,
     steps: input.steps.map((step) => ({
       type: "email",
