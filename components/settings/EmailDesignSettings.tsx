@@ -12,12 +12,19 @@ const PRESETS: { value: EmailThemePresetId; label: string }[] = [
   { value: "bold", label: "Bold" },
 ];
 
-const SAMPLE_BODY = `
-  <h2>Your account summary</h2>
-  <p>Hi there — here's a quick look at what's new this week.</p>
-  <p style="margin:20px 0;"><a href="#" style="display:inline-block;background:{{BUTTON_BG}};color:{{BUTTON_TEXT}};padding:{{BTN_PAD_Y}}px {{BTN_PAD_X}}px;border-radius:{{BTN_RADIUS}}px;text-decoration:none;font-weight:600;">View details</a></p>
-  <p>Questions? Just reply to this email.</p>
-`;
+function sampleBody(theme: EmailTheme): string {
+  const { colors, layout, buttonStyle } = theme;
+  const buttonCss =
+    buttonStyle === "outline"
+      ? `background:transparent;color:${colors.primary};border:2px solid ${colors.primary};`
+      : `background:${colors.primary};color:${colors.buttonText};border:none;`;
+  return `
+    <h2>Your account summary</h2>
+    <p>Hi there — here's a quick look at what's new this week.</p>
+    <p style="margin:20px 0;"><a href="#" style="display:inline-block;${buttonCss}padding:${layout.buttonPaddingY}px ${layout.buttonPaddingX}px;border-radius:${layout.buttonRadius}px;text-decoration:none;font-weight:600;">View details</a></p>
+    <p>Questions? Just reply to this email.</p>
+  `;
+}
 
 export function EmailDesignSettings({
   companyName,
@@ -45,6 +52,7 @@ export function EmailDesignSettings({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [applyingPreset, setApplyingPreset] = useState<EmailThemePresetId | null>(null);
 
   function setColor(key: keyof EmailTheme["colors"], value: string) {
     setTheme((t) => ({ ...t, colors: { ...t.colors, [key]: value } }));
@@ -64,17 +72,40 @@ export function EmailDesignSettings({
   }
 
   const previewHtml = useMemo(() => {
-    const body = SAMPLE_BODY.replace("{{BUTTON_BG}}", theme.colors.primary)
-      .replace("{{BUTTON_TEXT}}", theme.colors.buttonText)
-      .replace("{{BTN_PAD_Y}}", String(theme.layout.buttonPaddingY))
-      .replace("{{BTN_PAD_X}}", String(theme.layout.buttonPaddingX))
-      .replace("{{BTN_RADIUS}}", String(theme.layout.buttonRadius));
     return wrapBrandedEmail({
-      bodyHtml: body,
+      bodyHtml: sampleBody(theme),
       theme,
       brand: { companyName, logoUrl, websiteUrl: websiteUrl ?? undefined },
     });
   }, [theme, companyName, logoUrl, websiteUrl]);
+
+  // Switching styles isn't something we can compute client-side — Sequenzy derives
+  // the full colors/layout/typography for each preset server-side (confirmed by
+  // testing: PATCHing presetId alone returns a completely recalculated theme, and
+  // the "primary" color it produces is pulled from the currently-saved brand
+  // color). So applying a style saves brandColors + the new presetId immediately
+  // and replaces local state with whatever Sequenzy actually computed.
+  async function handleApplyPreset(presetId: EmailThemePresetId) {
+    setApplyingPreset(presetId);
+    setError(null);
+    try {
+      const res = await fetch("/api/settings/company", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brandColors, emailTheme: { presetId } }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Failed to apply style.");
+        return;
+      }
+      const company = await res.json();
+      setTheme(company.emailTheme);
+      setSaved(true);
+    } finally {
+      setApplyingPreset(null);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -118,6 +149,10 @@ export function EmailDesignSettings({
             <ColorInput label="Secondary" value={brandColors.secondary ?? "#000000"} onChange={(v) => setBrandColor("secondary", v)} />
             <ColorInput label="Accent" value={brandColors.accent ?? "#000000"} onChange={(v) => setBrandColor("accent", v)} />
           </div>
+          <p className="mt-2 text-xs text-gray-400">
+            These don&apos;t directly repaint the preview — they feed into the email colors below when you click a Style
+            option (which recalculates colors/spacing/typography from them), or when used elsewhere in Sequenzy.
+          </p>
         </div>
 
         <div>
@@ -127,18 +162,17 @@ export function EmailDesignSettings({
               <button
                 key={p.value}
                 type="button"
-                onClick={() => {
-                  setTheme((t) => ({ ...t, presetId: p.value }));
-                  setSaved(false);
-                }}
-                className={`flex-1 rounded-md py-1.5 font-medium transition ${
+                onClick={() => handleApplyPreset(p.value)}
+                disabled={applyingPreset !== null}
+                className={`flex-1 rounded-md py-1.5 font-medium transition disabled:opacity-60 ${
                   theme.presetId === p.value ? "bg-white text-elite-navy-dark shadow-sm" : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                {p.label}
+                {applyingPreset === p.value ? "Applying..." : p.label}
               </button>
             ))}
           </div>
+          <p className="mt-1 text-xs text-gray-400">Applying a style saves immediately — it recalculates the theme below from your brand colors.</p>
           <div className="mt-2 flex gap-1 rounded-lg bg-gray-100 p-1 text-sm">
             {(["solid", "outline"] as EmailButtonStyle[]).map((s) => (
               <button
