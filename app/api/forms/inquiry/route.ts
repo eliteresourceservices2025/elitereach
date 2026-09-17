@@ -12,6 +12,7 @@ import {
   type FormBlock,
 } from "@/lib/sequenzy";
 import { wrapBrandedEmail } from "@/lib/email-template";
+import { getEmailBranding } from "@/lib/get-email-branding";
 
 function slugify(text: string): string {
   return text
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
 
     const notifyEmails: string[] = Array.isArray(body.notifyEmails) ? body.notifyEmails.filter(Boolean) : [];
 
+    const { theme, brand } = await getEmailBranding();
     const sequence = await createSequence({
       name: `${body.name} — Confirmation`,
       trigger: "tag_added",
@@ -101,7 +103,7 @@ export async function POST(request: NextRequest) {
       steps: [
         {
           subject: body.confirmationSubject || "We've received your inquiry",
-          html: wrapBrandedEmail({ bodyHtml: confirmationBody }),
+          html: wrapBrandedEmail({ bodyHtml: confirmationBody, theme, brand }),
           delayDays: 0,
         },
       ],

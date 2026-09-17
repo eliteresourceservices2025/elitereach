@@ -1,7 +1,17 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { getAccountMetrics, getTestEmailCount, MONTHLY_EMAIL_QUOTA } from "@/lib/sequenzy";
+import {
+  getAccountMetrics,
+  getTestEmailCount,
+  getCompanyProfile,
+  getNotificationPreferences,
+  listPopups,
+  MONTHLY_EMAIL_QUOTA,
+} from "@/lib/sequenzy";
 import packageJson from "@/package.json";
+import { EmailDesignSettings } from "@/components/settings/EmailDesignSettings";
+import { ProductInfoSettings } from "@/components/settings/ProductInfoSettings";
+import { NotificationSettings } from "@/components/settings/NotificationSettings";
 
 async function safeMetrics() {
   try {
@@ -19,62 +29,174 @@ async function safeTestCount() {
   }
 }
 
+async function safeCompanyProfile() {
+  try {
+    return await getCompanyProfile();
+  } catch {
+    return null;
+  }
+}
+
+async function safeNotificationPreferences() {
+  try {
+    return await getNotificationPreferences();
+  } catch {
+    return null;
+  }
+}
+
+async function safePopups() {
+  try {
+    return await listPopups();
+  } catch {
+    return null;
+  }
+}
+
 export default async function SettingsPage() {
   const session = await getSession();
   if (!session?.isAdmin) redirect("/");
 
-  const [metrics, testEmails] = await Promise.all([safeMetrics(), safeTestCount()]);
+  const [metrics, testEmails, company, notifications, popups] = await Promise.all([
+    safeMetrics(),
+    safeTestCount(),
+    safeCompanyProfile(),
+    safeNotificationPreferences(),
+    safePopups(),
+  ]);
   const apiKey = process.env.SEQUENZY_API_KEY ?? "";
   const masked = apiKey ? `${apiKey.slice(0, 8)}${"•".repeat(Math.max(0, apiKey.length - 12))}${apiKey.slice(-4)}` : "Not set";
 
   return (
-    <div className="max-w-lg space-y-6">
+    <div className="max-w-4xl space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-elite-navy-dark">Settings</h1>
         <p className="text-sm text-gray-500">Admin-only configuration.</p>
       </div>
 
-      <div className="space-y-2 rounded-xl bg-white p-5 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Sequenzy API key</p>
-        <p className="font-mono text-sm text-gray-700">{masked}</p>
-        <p className="text-xs text-gray-400">Update this via the SEQUENZY_API_KEY environment variable in Vercel.</p>
+      <div className="max-w-lg space-y-6">
+        <div className="space-y-2 rounded-xl bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Sequenzy API key</p>
+          <p className="font-mono text-sm text-gray-700">{masked}</p>
+          <p className="text-xs text-gray-400">Update this via the SEQUENZY_API_KEY environment variable in Vercel.</p>
+        </div>
+
+        <div className="space-y-2 rounded-xl bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Est. monthly quota used</p>
+          {metrics ? (
+            <>
+              <p className="text-sm text-gray-700">
+                {(metrics.emailsSent30d + (testEmails?.count ?? 0)).toLocaleString()} / {MONTHLY_EMAIL_QUOTA.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-400">
+                {metrics.emailsSent30d.toLocaleString()} real send{metrics.emailsSent30d === 1 ? "" : "s"} (30d)
+                {testEmails && (
+                  <>
+                    {" "}
+                    + {testEmails.count.toLocaleString()} test{testEmails.count === 1 ? "" : "s"} ({testEmails.retentionDays}d)
+                  </>
+                )}
+              </p>
+              <p className="text-xs text-gray-400">
+                Sequenzy only exposes test-send history for the last {testEmails?.retentionDays ?? 14} days, so this is an
+                estimate, not an exact monthly total.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-gray-400">Unable to reach Sequenzy. Check your API key.</p>
+          )}
+        </div>
+
+        <div className="space-y-2 rounded-xl bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Approved team emails</p>
+          <p className="text-sm text-gray-700">{(process.env.APPROVED_EMAILS ?? "").split(",").length} team members</p>
+          <p className="text-xs text-gray-400">Managed via the APPROVED_EMAILS environment variable in Vercel.</p>
+        </div>
+
+        <div className="space-y-1 rounded-xl bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">App version</p>
+          <p className="text-sm text-gray-700">v{packageJson.version}</p>
+        </div>
       </div>
 
-      <div className="space-y-2 rounded-xl bg-white p-5 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Est. monthly quota used</p>
-        {metrics ? (
-          <>
-            <p className="text-sm text-gray-700">
-              {(metrics.emailsSent30d + (testEmails?.count ?? 0)).toLocaleString()} / {MONTHLY_EMAIL_QUOTA.toLocaleString()}
-            </p>
-            <p className="text-xs text-gray-400">
-              {metrics.emailsSent30d.toLocaleString()} real send{metrics.emailsSent30d === 1 ? "" : "s"} (30d)
-              {testEmails && (
-                <>
-                  {" "}
-                  + {testEmails.count.toLocaleString()} test{testEmails.count === 1 ? "" : "s"} ({testEmails.retentionDays}d)
-                </>
-              )}
-            </p>
-            <p className="text-xs text-gray-400">
-              Sequenzy only exposes test-send history for the last {testEmails?.retentionDays ?? 14} days, so this is an
-              estimate, not an exact monthly total.
-            </p>
-          </>
+      <div>
+        <h2 className="mb-3 text-lg font-semibold text-elite-navy-dark">Email design</h2>
+        {company ? (
+          <EmailDesignSettings
+            companyName={company.name}
+            logoUrl={company.logoUrl}
+            websiteUrl={company.websiteUrl}
+            initialBrandColors={company.brandColors}
+            initialTheme={company.emailTheme}
+          />
         ) : (
-          <p className="text-sm text-gray-400">Unable to reach Sequenzy. Check your API key.</p>
+          <p className="text-sm text-gray-400">Unable to reach Sequenzy to load email design settings.</p>
         )}
       </div>
 
-      <div className="space-y-2 rounded-xl bg-white p-5 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Approved team emails</p>
-        <p className="text-sm text-gray-700">{(process.env.APPROVED_EMAILS ?? "").split(",").length} team members</p>
-        <p className="text-xs text-gray-400">Managed via the APPROVED_EMAILS environment variable in Vercel.</p>
+      <div className="max-w-lg">
+        <h2 className="mb-3 text-lg font-semibold text-elite-navy-dark">Product info</h2>
+        {company ? (
+          <ProductInfoSettings
+            initialName={company.name}
+            initialLogoUrl={company.logoUrl}
+            initialSocialLinks={company.socialLinks}
+            initialPrivacyUrl={company.privacyPolicyUrl}
+            initialTermsUrl={company.termsUrl}
+            initialAddress={company.address}
+          />
+        ) : (
+          <p className="text-sm text-gray-400">Unable to reach Sequenzy to load product info.</p>
+        )}
       </div>
 
-      <div className="space-y-1 rounded-xl bg-white p-5 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">App version</p>
-        <p className="text-sm text-gray-700">v{packageJson.version}</p>
+      <div className="max-w-lg">
+        <h2 className="mb-3 text-lg font-semibold text-elite-navy-dark">Notifications</h2>
+        {notifications ? (
+          <NotificationSettings initialPreferences={notifications.preferences} supportedModes={notifications.supportedModes} />
+        ) : (
+          <p className="text-sm text-gray-400">Unable to reach Sequenzy to load notification preferences.</p>
+        )}
+      </div>
+
+      <div className="max-w-lg space-y-2 rounded-xl bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-elite-navy-dark">Widgets</h2>
+        <p className="text-xs text-gray-400">Embeds, popups, and signup forms for your site.</p>
+        <p className="text-sm text-gray-700">
+          Signup forms and embed codes are managed on the <a href="/forms" className="text-elite-violet hover:underline">Forms</a>{" "}
+          page.
+        </p>
+        {popups ? (
+          popups.popups.length === 0 ? (
+            <p className="text-sm text-gray-400">No popups yet.</p>
+          ) : (
+            <ul className="text-sm text-gray-700">
+              {popups.popups.map((p) => (
+                <li key={p.id}>
+                  {p.name ?? p.id} {p.status && <span className="text-xs text-gray-400">({p.status})</span>}
+                </li>
+              ))}
+            </ul>
+          )
+        ) : (
+          <p className="text-sm text-gray-400">Unable to reach Sequenzy to load popups.</p>
+        )}
+        {popups?.manageUrl && (
+          <a href={popups.manageUrl} target="_blank" rel="noreferrer" className="inline-block text-sm text-elite-violet hover:underline">
+            Manage popups in Sequenzy →
+          </a>
+        )}
+        <p className="text-xs text-gray-400">
+          Popup creation isn&apos;t available through Sequenzy&apos;s API yet, so new popups are built directly in Sequenzy.
+        </p>
+      </div>
+
+      <div className="max-w-lg space-y-2 rounded-xl bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-elite-navy-dark">Labels &amp; goals</h2>
+        <p className="text-sm text-gray-400">
+          Sequenzy&apos;s API doesn&apos;t currently expose endpoints for campaign/sequence labels or conversion goals, so
+          these can&apos;t be managed from EliteReach yet — manage them directly in the Sequenzy dashboard for now.
+        </p>
       </div>
     </div>
   );

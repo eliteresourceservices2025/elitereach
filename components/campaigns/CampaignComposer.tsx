@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Tag } from "@/lib/sequenzy";
-import { wrapBrandedEmail } from "@/lib/email-template";
+import type { Tag, EmailTheme } from "@/lib/sequenzy";
+import { wrapBrandedEmail, type EmailBrand } from "@/lib/email-template";
 import { RichTextEditor } from "@/components/email/RichTextEditor";
 import { AIGenerator } from "@/components/email/AIGenerator";
 import { GrapesEmailBuilder } from "@/components/email/GrapesEmailBuilder";
@@ -12,7 +12,15 @@ import { RecipientSelector, type Audience } from "./RecipientSelector";
 
 type Mode = "write" | "ai" | "design" | "html";
 
-export function CampaignComposer({ allTags }: { allTags: Tag[] }) {
+export function CampaignComposer({
+  allTags,
+  theme,
+  brand,
+}: {
+  allTags: Tag[];
+  theme?: EmailTheme;
+  brand?: EmailBrand;
+}) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("write");
   const [name, setName] = useState("");
@@ -30,7 +38,9 @@ export function CampaignComposer({ allTags }: { allTags: Tag[] }) {
   // wrapping it in the ELITE header/footer template would double up the chrome.
   const wrap = mode !== "html" && mode !== "design";
   const currentBody = mode === "html" ? rawHtml : mode === "design" ? designHtml : bodyHtml;
-  const previewHtml = wrap ? wrapBrandedEmail({ previewText, bodyHtml: currentBody || "<p></p>" }) : currentBody || "<p></p>";
+  const previewHtml = wrap
+    ? wrapBrandedEmail({ previewText, bodyHtml: currentBody || "<p></p>", theme, brand })
+    : currentBody || "<p></p>";
 
   function openPreviewInNewTab() {
     // An anchor-driven navigation to a blob: URL survives popup blockers that would

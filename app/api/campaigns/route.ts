@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { allAudience, createCampaign, listCampaigns, SequenzyError, tagAudience, type CampaignStatus } from "@/lib/sequenzy";
 import { wrapBrandedEmail } from "@/lib/email-template";
+import { getEmailBranding } from "@/lib/get-email-branding";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -22,7 +23,10 @@ export async function POST(request: NextRequest) {
   if (!body?.name || !body?.subject || !body?.bodyHtml) {
     return NextResponse.json({ error: "name, subject, and bodyHtml are required" }, { status: 400 });
   }
-  const html = body.wrap ? wrapBrandedEmail({ previewText: body.previewText, bodyHtml: body.bodyHtml }) : body.bodyHtml;
+  const { theme, brand } = body.wrap ? await getEmailBranding() : { theme: undefined, brand: undefined };
+  const html = body.wrap
+    ? wrapBrandedEmail({ previewText: body.previewText, bodyHtml: body.bodyHtml, theme, brand })
+    : body.bodyHtml;
   const targetLists = body.audience?.type === "tag" ? tagAudience(body.audience.tag) : allAudience();
 
   try {

@@ -61,6 +61,10 @@ async function request<T>(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      // Node's default fetch User-Agent trips a Sequenzy server-side quirk that
+      // silently drops fields from some responses (observed: weekly_report missing
+      // from /notification-preferences). A normal UA avoids it.
+      "User-Agent": "EliteReach/1.0 (+https://eliteresourceservices.com)",
     },
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     cache: "no-store",
@@ -395,6 +399,154 @@ export async function getSendEventBreakdown(days = 14): Promise<SendEventBreakdo
     delayRate: pct(delayed, delivered),
     dailySent,
   };
+}
+
+// ---- Company profile / email design ----
+//
+// Sequenzy stores brand identity and the email design system on the company
+// record, exactly as shown in Sequenzy's own dashboard (Settings). There's no
+// per-app storage for this — reading/writing it here reads/writes the same
+// record the team sees in Sequenzy, so it stays in sync everywhere emails are
+// sent from.
+
+export type EmailThemePresetId = "default" | "soft" | "editorial" | "bold";
+export type EmailButtonStyle = "solid" | "outline";
+
+export type EmailThemeColors = {
+  background: string;
+  surface: string;
+  text: string;
+  mutedText: string;
+  heading: string;
+  border: string;
+  link: string;
+  primary: string;
+  buttonText: string;
+};
+
+export type EmailThemeLayout = {
+  contentWidth: number;
+  containerPaddingX: number;
+  containerPaddingY: number;
+  sectionPadding: number;
+  blockSpacing: number;
+  baseRadius: number;
+  buttonRadius: number;
+  buttonPaddingX: number;
+  buttonPaddingY: number;
+  borderedBlockPadding: number;
+};
+
+export type EmailThemeTypography = {
+  baseFontSize: number;
+  baseLineHeight: number;
+  leadFontSize: number;
+  heading1Size: number;
+  heading2Size: number;
+  heading3Size: number;
+  headingFontWeight: number;
+  headingLetterSpacing: number;
+  buttonFontSize: number;
+  buttonFontWeight: number;
+};
+
+export type EmailTheme = {
+  presetId: EmailThemePresetId;
+  buttonStyle: EmailButtonStyle;
+  colors: EmailThemeColors;
+  layout: EmailThemeLayout;
+  typography: EmailThemeTypography;
+};
+
+export type BrandColors = { primary?: string; secondary?: string; accent?: string; background?: string };
+
+export type CompanyProfile = {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  websiteUrl: string | null;
+  primaryColor: string | null;
+  brandColors: BrandColors | null;
+  socialLinks: Record<string, string> | null;
+  privacyPolicyUrl: string | null;
+  termsUrl: string | null;
+  address: string | null;
+  emailTheme: EmailTheme;
+  defaultFromEmail: string | null;
+  defaultFromName: string | null;
+};
+
+async function getCurrentCompanyId(): Promise<string> {
+  const res = await request<{ success: boolean; currentCompanyId: string }>("/account");
+  return res.currentCompanyId;
+}
+
+export async function getCompanyProfile(): Promise<CompanyProfile> {
+  const companyId = await getCurrentCompanyId();
+  const res = await request<{ success: boolean; company: CompanyProfile }>(`/companies/${encodeURIComponent(companyId)}`);
+  return res.company;
+}
+
+export type CompanyProfilePatch = Partial<{
+  name: string;
+  logoUrl: string;
+  primaryColor: string;
+  brandColors: BrandColors;
+  socialLinks: Record<string, string>;
+  privacyPolicyUrl: string;
+  termsUrl: string;
+  address: string;
+  emailTheme: Partial<Omit<EmailTheme, "colors" | "layout" | "typography">> & {
+    colors?: Partial<EmailThemeColors>;
+    layout?: Partial<EmailThemeLayout>;
+    typography?: Partial<EmailThemeTypography>;
+  };
+}>;
+
+export async function updateCompanyProfile(patch: CompanyProfilePatch): Promise<CompanyProfile> {
+  const companyId = await getCurrentCompanyId();
+  const res = await request<{ success: boolean; company: CompanyProfile }>(`/companies/${encodeURIComponent(companyId)}`, {
+    method: "PATCH",
+    body: patch,
+  });
+  return res.company;
+}
+
+// ---- Notification preferences ----
+
+export type NotificationEvent = "new_subscriber" | "form_submitted" | "campaign_completed" | "weekly_report";
+export type NotificationMode = "off" | "instant" | "daily" | "weekly";
+
+export async function getNotificationPreferences(): Promise<{
+  preferences: { event: NotificationEvent; mode: NotificationMode }[];
+  supportedModes: Record<NotificationEvent, NotificationMode[]>;
+}> {
+  const res = await request<{
+    success: boolean;
+    notificationPreferences: { event: NotificationEvent; mode: NotificationMode }[];
+    supportedModes: Record<NotificationEvent, NotificationMode[]>;
+  }>("/notification-preferences");
+  return { preferences: res.notificationPreferences, supportedModes: res.supportedModes };
+}
+
+export async function updateNotificationPreferences(
+  preferences: { event: NotificationEvent; mode: NotificationMode }[]
+): Promise<void> {
+  await request("/notification-preferences", { method: "PATCH", body: { notificationPreferences: preferences } });
+}
+
+// ---- Widgets (popups) ----
+//
+// Signup forms and embeds are already covered by the Forms feature. Popups
+// are a separate Sequenzy resource with no documented creation schema via
+// the API, so this only lists what already exists — creating/editing a
+// popup happens in Sequenzy's own dashboard for now.
+
+export type PopupSummary = { id: string; name?: string; status?: string };
+
+export async function listPopups(): Promise<{ popups: PopupSummary[]; manageUrl: string | null }> {
+  const res = await request<{ success: boolean; popups: PopupSummary[]; url?: string }>("/popups");
+  return { popups: res.popups, manageUrl: res.url ?? null };
 }
 
 // ---- Campaigns ----

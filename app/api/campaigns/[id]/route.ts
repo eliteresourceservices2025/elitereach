@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { allAudience, deleteCampaign, getCampaign, SequenzyError, tagAudience, updateCampaign } from "@/lib/sequenzy";
 import { wrapBrandedEmail } from "@/lib/email-template";
+import { getEmailBranding } from "@/lib/get-email-branding";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -24,7 +25,12 @@ export async function PUT(request: NextRequest, { params }: Params) {
   if (body.subject !== undefined) update.subject = body.subject;
   if (body.previewText !== undefined) update.previewText = body.previewText;
   if (body.bodyHtml !== undefined) {
-    update.html = body.wrap ? wrapBrandedEmail({ previewText: body.previewText, bodyHtml: body.bodyHtml }) : body.bodyHtml;
+    if (body.wrap) {
+      const { theme, brand } = await getEmailBranding();
+      update.html = wrapBrandedEmail({ previewText: body.previewText, bodyHtml: body.bodyHtml, theme, brand });
+    } else {
+      update.html = body.bodyHtml;
+    }
   }
   if (body.audience !== undefined) {
     update.targetLists = body.audience?.type === "tag" ? tagAudience(body.audience.tag) : allAudience();

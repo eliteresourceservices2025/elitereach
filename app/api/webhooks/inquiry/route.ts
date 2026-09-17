@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendTransactionalEmail } from "@/lib/sequenzy";
 import { wrapBrandedEmail } from "@/lib/email-template";
+import { getEmailBranding } from "@/lib/get-email-branding";
 
 const FIELD_LABELS: Record<string, string> = {
   companyName: "Company name",
@@ -76,10 +77,11 @@ export async function POST(request: NextRequest) {
   `;
 
   try {
+    const { theme, brand } = await getEmailBranding();
     await sendTransactionalEmail({
       to: notify,
       subject: `New inquiry: ${firstName || email}`.trim(),
-      body: wrapBrandedEmail({ bodyHtml }),
+      body: wrapBrandedEmail({ bodyHtml, theme, brand }),
       replyTo: email || undefined,
       replyToName: `${firstName} ${lastName}`.trim() || undefined,
     });

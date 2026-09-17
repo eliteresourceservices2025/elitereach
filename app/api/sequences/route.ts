@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSequence, listSequences, SequenzyError } from "@/lib/sequenzy";
 import { wrapBrandedEmail } from "@/lib/email-template";
+import { getEmailBranding } from "@/lib/get-email-branding";
 
 export async function GET() {
   try {
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const { theme, brand } = await getEmailBranding();
     const sequence = await createSequence({
       name: body.name,
       trigger: body.trigger === "tag_added" ? "tag_added" : "contact_added",
@@ -29,7 +31,10 @@ export async function POST(request: NextRequest) {
       steps: body.steps.map((step: { subject: string; previewText?: string; bodyHtml: string; delayDays: number; wrap?: boolean }) => ({
         subject: step.subject,
         previewText: step.previewText,
-        html: step.wrap === false ? step.bodyHtml : wrapBrandedEmail({ previewText: step.previewText, bodyHtml: step.bodyHtml }),
+        html:
+          step.wrap === false
+            ? step.bodyHtml
+            : wrapBrandedEmail({ previewText: step.previewText, bodyHtml: step.bodyHtml, theme, brand }),
         delayDays: step.delayDays,
       })),
     });
