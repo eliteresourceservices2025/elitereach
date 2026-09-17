@@ -31,10 +31,12 @@ export function SenderReplyFields({
   value,
   onChange,
   showCc = true,
+  showBcc = true,
 }: {
   value: SenderReplyValue;
   onChange: (value: SenderReplyValue) => void;
   showCc?: boolean;
+  showBcc?: boolean;
 }) {
   function set<K extends keyof SenderReplyValue>(key: K, v: SenderReplyValue[K]) {
     onChange({ ...value, [key]: v });
@@ -78,28 +80,32 @@ export function SenderReplyFields({
         </div>
       </div>
 
-      <div className={`grid gap-2 ${showCc ? "grid-cols-2" : "grid-cols-1"}`}>
-        {showCc && (
-          <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-400">CC</label>
-            <input
-              value={value.cc}
-              onChange={(e) => set("cc", e.target.value)}
-              placeholder="staff1@..., staff2@..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
-        )}
-        <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-400">BCC</label>
-          <input
-            value={value.bcc}
-            onChange={(e) => set("bcc", e.target.value)}
-            placeholder="staff1@..., staff2@..."
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          />
+      {(showCc || showBcc) && (
+        <div className={`grid gap-2 ${showCc && showBcc ? "grid-cols-2" : "grid-cols-1"}`}>
+          {showCc && (
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-400">CC</label>
+              <input
+                value={value.cc}
+                onChange={(e) => set("cc", e.target.value)}
+                placeholder="staff1@..., staff2@..."
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+          {showBcc && (
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-400">BCC</label>
+              <input
+                value={value.bcc}
+                onChange={(e) => set("bcc", e.target.value)}
+                placeholder="staff1@..., staff2@..."
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

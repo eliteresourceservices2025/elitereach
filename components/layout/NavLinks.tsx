@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Tag, Send, Workflow, FileEdit, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Tag, Send, Workflow, FileEdit, Mail, History, BarChart3, Settings } from "lucide-react";
 
 const BASE_LINKS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -10,7 +10,9 @@ const BASE_LINKS = [
   { href: "/tags", label: "Tags", icon: Tag },
   { href: "/campaigns", label: "Campaigns", icon: Send },
   { href: "/sequences", label: "Sequences", icon: Workflow },
+  { href: "/transactional", label: "Transactional", icon: Mail },
   { href: "/forms", label: "Forms", icon: FileEdit },
+  { href: "/sent-emails", label: "Sent Emails", icon: History },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 

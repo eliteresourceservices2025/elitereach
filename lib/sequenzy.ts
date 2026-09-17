@@ -271,6 +271,37 @@ export async function getTestEmailCount(days = 14): Promise<{ count: number; ret
   return { count, retentionDays };
 }
 
+export type EmailSendType = "campaign" | "sequence" | "transactional";
+
+export type EmailSend = {
+  id: string;
+  type: EmailSendType;
+  isTestEmail: boolean;
+  recipientEmail: string;
+  subject: string;
+  status: string;
+  sentAt: string;
+  deliveredAt: string | null;
+  openedAt: string | null;
+  clickedAt: string | null;
+  bouncedAt: string | null;
+  bounceType: string | null;
+};
+
+/** Paginated send history — the same 14-day retention window used elsewhere in this file. */
+export async function listEmailSends(params?: {
+  days?: number;
+  page?: number;
+  limit?: number;
+}): Promise<{ emailSends: EmailSend[]; retentionDays: number; pagination: { page: number; limit: number; totalPages: number } }> {
+  const res = await request<{
+    retentionDays: number;
+    emailSends: EmailSend[];
+    pagination: { page: number; limit: number; totalPages: number };
+  }>("/email-sends", { query: { days: params?.days ?? 14, page: params?.page ?? 1, limit: params?.limit ?? 50 } });
+  return { emailSends: res.emailSends, retentionDays: res.retentionDays, pagination: res.pagination };
+}
+
 export type MetricsPeriod = "7d" | "30d" | "90d";
 
 export type MetricsDetail = {
@@ -1005,6 +1036,8 @@ export async function sendTransactionalEmail(input: {
   body: string;
   replyTo?: string;
   replyToName?: string;
+  fromName?: string;
+  fromEmail?: string;
 }): Promise<{ emailSendId: string }> {
   const res = await request<{ success: boolean; emailSendId: string }>("/transactional/send", {
     method: "POST",
