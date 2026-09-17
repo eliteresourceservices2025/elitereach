@@ -5,10 +5,13 @@ Internal email marketing tool for Elite Resource Services. It's a thin, branded 
 ## Features
 
 - **Contacts & tags** — browse, search, add, and tag contacts; bulk tag/enroll actions; CSV import
-- **Campaigns** — one-time sends with four ways to compose an email: a rich-text editor, AI generation, a drag-and-drop builder (GrapesJS), or pasted raw HTML
-- **Sequences** — automated multi-step email drips triggered by contact activity (e.g. new signup, tag added)
+- **Campaigns** — one-time sends with four ways to compose an email: a rich-text editor, AI generation, a drag-and-drop builder (GrapesJS), or pasted raw HTML; per-campaign From, Reply-to, CC, and BCC; a Desktop/Tablet/Mobile live preview
+- **Sequences** — automated multi-step email drips triggered by contact activity (e.g. new signup, tag added), with the same From/Reply-to/BCC and device-preview controls per step
+- **Transactional email** — a one-off send tool for a specific recipient, outside campaigns/sequences, with a confirm-before-send step since it sends immediately
+- **Sent emails** — a log of everything sent (campaigns, sequences, transactional), filterable by type, showing delivery/open/click/bounce status
 - **Forms** — newsletter signup and contact/inquiry forms, embeddable on the ERS website, with staff email notifications on new inquiries
 - **Analytics** — send/open/click/bounce/unsub rates, bounce & complaint breakdowns, a sends-per-day trend chart, and a per-email leaderboard, all filterable by time period and email type
+- **Settings** — Email Design (brand colors, style presets, typography, spacing, and colors, with a live preview), Product Info (name, logo, social links, legal details), and Notifications (new subscriber / form submitted / campaign finished / weekly report), all reading and writing the same Sequenzy account data the team sees in Sequenzy's own dashboard
 - **Auth** — signed-cookie sessions gated by an email whitelist, with two roles: admins (full access, including Settings) and senders
 
 ## Getting started
