@@ -2,7 +2,7 @@ import type { EmailTheme } from "./sequenzy";
 
 const FALLBACK_LOGO_URL = "https://eliteresourceservices.com/wp-content/themes/ers-theme/assets/images/ELITE-RESOURCE-PRO-LOGO-ICON.png";
 
-const FALLBACK_THEME: EmailTheme = {
+export const DEFAULT_EMAIL_THEME: EmailTheme = {
   presetId: "default",
   buttonStyle: "solid",
   colors: {
@@ -67,9 +67,15 @@ export function wrapBrandedEmail({
   theme?: EmailTheme;
   brand?: EmailBrand;
 }): string {
-  const t = theme ?? FALLBACK_THEME;
+  // Merge rather than replace-if-absent: Sequenzy's style presets can omit
+  // individual color keys entirely (observed: "soft" has no buttonText at all),
+  // and an omitted key silently produces invalid CSS like `color:undefined`
+  // that browsers just drop, so text/backgrounds fall back to defaults like
+  // link-blue. Filling gaps per-field keeps every field always rendering.
   const b = { ...FALLBACK_BRAND, ...brand, logoUrl: brand?.logoUrl || FALLBACK_BRAND.logoUrl };
-  const { colors, layout, typography } = t;
+  const colors = { ...DEFAULT_EMAIL_THEME.colors, ...theme?.colors };
+  const layout = { ...DEFAULT_EMAIL_THEME.layout, ...theme?.layout };
+  const typography = { ...DEFAULT_EMAIL_THEME.typography, ...theme?.typography };
 
   return `<!DOCTYPE html>
 <html lang="en">

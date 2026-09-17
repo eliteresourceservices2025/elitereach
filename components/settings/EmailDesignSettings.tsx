@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { BrandColors, EmailButtonStyle, EmailTheme, EmailThemePresetId } from "@/lib/sequenzy";
-import { wrapBrandedEmail } from "@/lib/email-template";
+import { wrapBrandedEmail, DEFAULT_EMAIL_THEME } from "@/lib/email-template";
 import { EmailPreview } from "@/components/email/EmailPreview";
 
 const PRESETS: { value: EmailThemePresetId; label: string }[] = [
@@ -11,6 +11,19 @@ const PRESETS: { value: EmailThemePresetId; label: string }[] = [
   { value: "editorial", label: "Editorial" },
   { value: "bold", label: "Bold" },
 ];
+
+/** Some style presets omit individual color/layout/typography keys entirely
+ * (observed: "soft" has no buttonText), which would otherwise leave a color
+ * input uncontrolled/undefined. Fill any gaps from the built-in defaults. */
+function mergeTheme(theme: EmailTheme): EmailTheme {
+  return {
+    presetId: theme.presetId ?? DEFAULT_EMAIL_THEME.presetId,
+    buttonStyle: theme.buttonStyle ?? DEFAULT_EMAIL_THEME.buttonStyle,
+    colors: { ...DEFAULT_EMAIL_THEME.colors, ...theme.colors },
+    layout: { ...DEFAULT_EMAIL_THEME.layout, ...theme.layout },
+    typography: { ...DEFAULT_EMAIL_THEME.typography, ...theme.typography },
+  };
+}
 
 function sampleBody(theme: EmailTheme): string {
   const { colors, layout, buttonStyle } = theme;
@@ -48,7 +61,7 @@ export function EmailDesignSettings({
     secondary: initialBrandColors?.secondary ?? "#e2be2b",
     accent: initialBrandColors?.accent ?? "#7b70c9",
   });
-  const [theme, setTheme] = useState<EmailTheme>(initialTheme);
+  const [theme, setTheme] = useState<EmailTheme>(() => mergeTheme(initialTheme));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +113,27 @@ export function EmailDesignSettings({
         return;
       }
       const company = await res.json();
-      setTheme(company.emailTheme);
+      const merged = mergeTheme(company.emailTheme);
+      setTheme(merged);
+
+      // Sequenzy's preset computation can omit fields (e.g. "soft" has no
+      // buttonText), so `merged` fills gaps locally — but that fallback only
+      // exists in this component's state until it's written back. Persist it
+      // so what's saved matches what's shown, instead of relying on every
+      // future reader to re-apply the same fallback.
+      await fetch("/api/settings/company", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emailTheme: {
+            presetId: merged.presetId,
+            buttonStyle: merged.buttonStyle,
+            colors: merged.colors,
+            layout: merged.layout,
+            typography: merged.typography,
+          },
+        }),
+      });
       setSaved(true);
     } finally {
       setApplyingPreset(null);
