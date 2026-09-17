@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EliteReach
 
-## Getting Started
+Internal email marketing tool for Elite Resource Services. It's a thin, branded UI wrapped around the [Sequenzy](https://sequenzy.com) API — there's no database, no separate backend, and no data store of its own. Every contact, tag, campaign, sequence, and form lives in Sequenzy; this app just gives the ERS team a simpler, on-brand way to work with it.
 
-First, run the development server:
+## Features
+
+- **Contacts & tags** — browse, search, add, and tag contacts; bulk tag/enroll actions; CSV import
+- **Campaigns** — one-time sends with four ways to compose an email: a rich-text editor, AI generation, a drag-and-drop builder (GrapesJS), or pasted raw HTML
+- **Sequences** — automated multi-step email drips triggered by contact activity (e.g. new signup, tag added)
+- **Forms** — newsletter signup and contact/inquiry forms, embeddable on the ERS website, with staff email notifications on new inquiries
+- **Analytics** — send/open/click/bounce/unsub rates, bounce & complaint breakdowns, a sends-per-day trend chart, and a per-email leaderboard, all filterable by time period and email type
+- **Auth** — signed-cookie sessions gated by an email whitelist, with two roles: admins (full access, including Settings) and senders
+
+## Getting started
+
+Install dependencies and run the dev server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.local` (not committed) with:
 
-## Learn More
+```
+APPROVED_EMAILS=comma,separated,list@of,team,emails.com
+ADMIN_EMAILS=comma,separated,admin@emails.com
+COOKIE_SECRET=a-long-random-secret
 
-To learn more about Next.js, take a look at the following resources:
+SEQUENZY_API_KEY=your-sequenzy-api-key
+SEQUENZY_API_BASE_URL=https://api.sequenzy.com/api/v1
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Public URL of this app once deployed — used to register inquiry-form
+# staff-notification webhooks. Sequenzy can't reach localhost, so webhook
+# registration is skipped while this is set to a local address.
+APP_BASE_URL=https://your-deployed-url.vercel.app
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Stack
 
-## Deploy on Vercel
+Next.js (App Router) · TypeScript · Tailwind CSS · TipTap (rich text) · GrapesJS (drag-and-drop builder) · jose (signed session cookies)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built for zero-cost hosting on [Vercel](https://vercel.com). Since there's no database, deployment is just: set the environment variables above in the Vercel project settings, then push to the connected branch. Remember to update `APP_BASE_URL` to the real production URL after the first deploy — inquiry-form staff notifications depend on it.
