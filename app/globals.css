@@ -1,0 +1,39 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1a1330;
+
+  --color-elite-navy: #3d1a6e;
+  --color-elite-navy-dark: #2a1150;
+  --color-elite-violet: #8a2be2;
+  --color-elite-violet-light: #a557ea;
+  --color-elite-gold: #e2be2b;
+  --color-elite-bg: #faf8ff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-elite-navy: var(--color-elite-navy);
+  --color-elite-navy-dark: var(--color-elite-navy-dark);
+  --color-elite-violet: var(--color-elite-violet);
+  --color-elite-violet-light: var(--color-elite-violet-light);
+  --color-elite-gold: var(--color-elite-gold);
+  --color-elite-bg: var(--color-elite-bg);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--color-elite-bg);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Nudge the GrapesJS drag-and-drop builder toward the ELITE palette. */
+.elite-grapes {
+  --gjs-primary-color: #2a1150;
+  --gjs-main-color: #2a1150;
+  --gjs-quaternary-color: #8a2be2;
+}
