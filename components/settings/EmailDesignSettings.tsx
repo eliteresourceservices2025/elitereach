@@ -239,8 +239,13 @@ export function EmailDesignSettings({
             <ColorInput label="Headings" value={theme.colors.heading} onChange={(v) => setColor("heading", v)} />
             <ColorInput label="Borders" value={theme.colors.border} onChange={(v) => setColor("border", v)} />
             <ColorInput label="Links" value={theme.colors.link} onChange={(v) => setColor("link", v)} />
+            <ColorInput label="Button background" value={theme.colors.primary} onChange={(v) => setColor("primary", v)} />
+            <ColorInput label="Button text" value={theme.colors.buttonText} onChange={(v) => setColor("buttonText", v)} />
           </div>
-          <p className="mt-2 text-xs text-gray-400">Sequenzy doesn&apos;t have a separate card color — cards reuse the content background above.</p>
+          <p className="mt-2 text-xs text-gray-400">
+            Sequenzy doesn&apos;t have a separate card color — cards reuse the content background above. Button background also
+            colors the header banner, since they share the same underlying value.
+          </p>
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
