@@ -29,6 +29,27 @@ const TRIGGER_PRESETS: TriggerPreset[] = [
     trigger: "contact_added",
   },
   {
+    id: "contact_form",
+    label: "Contact form submitted",
+    description: 'Starts when a contact is tagged "contact-form-submitted".',
+    trigger: "tag_added",
+    tagName: "contact-form-submitted",
+  },
+  {
+    id: "newsletter_subscriber",
+    label: "Newsletter subscriber",
+    description: 'Starts when a contact is tagged "newsletter-subscriber".',
+    trigger: "tag_added",
+    tagName: "newsletter-subscriber",
+  },
+  {
+    id: "content_updates_subscriber",
+    label: "Content updates subscriber (blog/podcast/webinar)",
+    description: 'Starts when a contact is tagged "content-updates-subscriber".',
+    trigger: "tag_added",
+    tagName: "content-updates-subscriber",
+  },
+  {
     id: "healthcare_lead",
     label: "Healthcare industry lead",
     description: 'Starts when a contact is tagged "healthcare-leads".',
