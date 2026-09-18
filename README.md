@@ -6,7 +6,7 @@ Internal email marketing tool for Elite Resource Services. It's a thin, branded 
 
 - **Contacts & tags** — browse, search, add, and tag contacts; bulk tag/enroll actions; CSV import
 - **Campaigns** — one-time sends with four ways to compose an email: a rich-text editor, AI generation, a drag-and-drop builder (GrapesJS), or pasted raw HTML; per-campaign From, Reply-to, CC, and BCC; a Desktop/Tablet/Mobile live preview
-- **Sequences** — automated multi-step email drips triggered by contact activity (e.g. new signup, tag added), with the same From/Reply-to/BCC and device-preview controls per step
+- **Sequences** — a visual drag-and-drop canvas (React Flow) matching Sequenzy's own automation builder: Send Email (with AI-drafted content), Delay, Wait for Event, Add/Remove Tag, Add/Remove from List, Update Subscriber, and If/Else branching steps; business-specific trigger presets (new inquiry, discovery call booked, proposal sent, client onboarded, industry leads, form subscriptions, and more) alongside a full custom/advanced trigger option; manual contact enrollment; and a way to send a test email for one step or run a live test of the whole sequence
 - **Transactional email** — a one-off send tool for a specific recipient, outside campaigns/sequences, with a confirm-before-send step since it sends immediately
 - **Sent emails** — a log of everything sent (campaigns, sequences, transactional), filterable by type, showing delivery/open/click/bounce status
 - **Forms** — newsletter signup and contact/inquiry forms, embeddable on the ERS website, with staff email notifications on new inquiries
