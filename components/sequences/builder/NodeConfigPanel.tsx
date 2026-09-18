@@ -8,7 +8,7 @@ import { RichTextEditor } from "@/components/email/RichTextEditor";
 import { DevicePreview } from "@/components/email/DevicePreview";
 import { EventNameField } from "../EventNameField";
 import { DelayFields, emptyDelay } from "./DelayFields";
-import { isSupportedNodeType, isTriggerNode } from "./types";
+import { isBranchNode, isSupportedNodeType, isTriggerNode } from "./types";
 
 export function NodeConfigPanel({
   node,
@@ -41,6 +41,33 @@ export function NodeConfigPanel({
         <p className="text-sm text-gray-500">
           {isEnd ? "Recipients reaching here have finished the sequence." : "Edit the trigger from the sequence settings above."}
         </p>
+      </Panel>
+    );
+  }
+
+  if (isBranchNode(node)) {
+    const branches = Array.isArray(node.config?.branches) ? (node.config.branches as Record<string, unknown>[]) : [];
+    return (
+      <Panel title="If / Else" onClose={onClose}>
+        <p className="text-sm text-gray-700">{(node.config?.label as string) || "Branch"}</p>
+        {branches.map((b, i) => (
+          <p key={i} className="text-xs text-gray-500">
+            If: {String(b.conditionType ?? "").replace(/_/g, " ")}
+            {b.tagName ? ` "${b.tagName}"` : ""}
+          </p>
+        ))}
+        <p className="text-xs text-gray-400">
+          Condition editing isn&apos;t supported here yet — add steps to each path by clicking the + below them. Deleting
+          this branch keeps the Else path&apos;s continuation and discards the If path along with any steps in it.
+        </p>
+        <div className="flex justify-between pt-1">
+          <button onClick={onDelete} className="text-xs text-red-500 hover:underline">
+            Delete branch
+          </button>
+          <button onClick={onClose} className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-200">
+            Close
+          </button>
+        </div>
       </Panel>
     );
   }

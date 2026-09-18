@@ -14,6 +14,7 @@ import {
   Zap,
   HelpCircle,
   CheckCircle2,
+  GitBranch,
 } from "lucide-react";
 import type { SequenceNode } from "@/lib/sequenzy";
 
@@ -133,6 +134,14 @@ export function EndNodeComponent({ selected }: NodeProps<BuilderNode>) {
   return <NodeShell icon={CheckCircle2} title="Sequence complete" color="bg-gray-400" selected={selected} showSource={false} />;
 }
 
+export function BranchNodeComponent({ data, selected }: NodeProps<BuilderNode>) {
+  const c = data.node.config;
+  const branches = Array.isArray(c?.branches) ? (c.branches as { conditionType?: string; tagName?: string }[]) : [];
+  const first = branches[0];
+  const subtitle = (c?.label as string) || (first?.conditionType ? first.conditionType.replace(/_/g, " ") : "Branch");
+  return <NodeShell icon={GitBranch} title="If / Else" subtitle={subtitle} color="bg-fuchsia-500" selected={selected} />;
+}
+
 export function UnsupportedNodeComponent({ data, selected }: NodeProps<BuilderNode>) {
   return (
     <NodeShell
@@ -169,6 +178,7 @@ export const nodeTypes = {
   tagAction: TagActionNodeComponent,
   listAction: ListActionNodeComponent,
   action_update_attributes: UpdateSubscriberNodeComponent,
+  logic_branch: BranchNodeComponent,
   end: EndNodeComponent,
   unsupported: UnsupportedNodeComponent,
   addStep: AddStepNodeComponent,

@@ -24,6 +24,32 @@ export function isTriggerNode(node: SequenceNode): boolean {
   return node.nodeType.startsWith("trigger_");
 }
 
+export function isBranchNode(node: SequenceNode): boolean {
+  return node.nodeType === "logic_branch";
+}
+
+export type BranchConditionTypeOption = "has_tag" | "does_not_have_tag" | "in_list" | "event_received" | "link_clicked";
+
+export const BRANCH_CONDITION_TYPES: { value: BranchConditionTypeOption; label: string }[] = [
+  { value: "has_tag", label: "Contact has tag" },
+  { value: "does_not_have_tag", label: "Contact does not have tag" },
+  { value: "in_list", label: "Contact is in list" },
+  { value: "event_received", label: "Event was received" },
+  { value: "link_clicked", label: "Link was clicked" },
+];
+
+/** A reduced set usable as the first step of a branch path — Delay and Wait
+ * for Event are left out to keep the branch-creation form manageable; they
+ * can still be added as a second step once the path has its first node. */
+export const BRANCH_STEP_TYPES: { value: SupportedNodeType; label: string }[] = [
+  { value: "action_email", label: "Send Email" },
+  { value: "action_add_tag", label: "Add Tag" },
+  { value: "action_remove_tag", label: "Remove Tag" },
+  { value: "action_add_to_list", label: "Add to List" },
+  { value: "action_remove_from_list", label: "Remove from List" },
+  { value: "action_update_attributes", label: "Update Subscriber" },
+];
+
 export const ADD_STEP_TYPES: { value: SupportedNodeType; label: string; description: string }[] = [
   { value: "action_email", label: "Send Email", description: "Compose and send an email to the contact." },
   { value: "logic_delay", label: "Delay", description: "Wait a fixed amount of time before continuing." },

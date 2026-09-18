@@ -908,6 +908,56 @@ export async function insertSequenceSteps(
   return getSequence(id);
 }
 
+export type BranchCondition =
+  | { conditionType: "has_tag" | "does_not_have_tag"; tagName: string }
+  | { conditionType: "in_list"; listId: string }
+  | { conditionType: "event_received"; eventName: string; activityScope?: "this_sequence" | "previous_email" | "ever" }
+  | { conditionType: "link_clicked"; activityScope?: "this_sequence" | "previous_email" | "ever" };
+
+/**
+ * Inserts an if/else branch. Sequenzy rejects inserting linear steps directly
+ * after a branch node (confirmed live — "Cannot insert linear steps directly
+ * after a branch node"), so the only safe way to give a path its first step
+ * is at branch-creation time via `steps`/`elseSteps` here. Both paths are
+ * always given `targetNodeId` pointing at `mergeTargetNodeId` — the node that
+ * currently follows `afterNodeId` — so they reliably reconnect to the rest of
+ * the sequence whether or not a path has any steps of its own.
+ */
+export async function insertSequenceBranch(
+  id: string,
+  input: {
+    afterNodeId: string;
+    mergeTargetNodeId: string;
+    label?: string;
+    condition: BranchCondition;
+    ifSteps?: InsertableStep[];
+    elseSteps?: InsertableStep[];
+    confirmStructuralChange?: boolean;
+  }
+): Promise<SequenceDetail> {
+  await request(`/sequences/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: {
+      branch: {
+        afterNodeId: input.afterNodeId,
+        label: input.label,
+        branches: [
+          {
+            id: "if",
+            ...input.condition,
+            steps: input.ifSteps && input.ifSteps.length > 0 ? input.ifSteps : undefined,
+            targetNodeId: input.mergeTargetNodeId,
+          },
+        ],
+        elseSteps: input.elseSteps && input.elseSteps.length > 0 ? input.elseSteps : undefined,
+        elseTargetNodeId: input.mergeTargetNodeId,
+      },
+      confirmStructuralChange: input.confirmStructuralChange,
+    },
+  });
+  return getSequence(id);
+}
+
 export async function updateSequenceNode(
   id: string,
   input: { nodeId: string; expectedUpdatedAt?: string; changes: Record<string, unknown>; confirmLiveChange?: boolean }
