@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSequence, listSequences, SequenzyError } from "@/lib/sequenzy";
+import { createSequence, listSequences, SequenzyError, type SequenceTrigger } from "@/lib/sequenzy";
 import { wrapBrandedEmail } from "@/lib/email-template";
 import { getEmailBranding } from "@/lib/get-email-branding";
 
@@ -18,16 +18,25 @@ export async function POST(request: NextRequest) {
   if (!body?.name) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
-  if (body.trigger === "tag_added" && !body.tagName) {
+  const validTriggers: SequenceTrigger[] = ["contact_added", "tag_added", "event_received", "inactivity", "frequency"];
+  const trigger: SequenceTrigger = validTriggers.includes(body.trigger) ? body.trigger : "contact_added";
+  if (trigger === "tag_added" && !body.tagName) {
     return NextResponse.json({ error: "tagName is required for the tag_added trigger" }, { status: 400 });
+  }
+  if ((trigger === "event_received" || trigger === "inactivity" || trigger === "frequency") && !body.eventName) {
+    return NextResponse.json({ error: "eventName is required for this trigger" }, { status: 400 });
   }
 
   try {
     const { theme, brand } = await getEmailBranding();
     const sequence = await createSequence({
       name: body.name,
-      trigger: body.trigger === "tag_added" ? "tag_added" : "contact_added",
+      trigger,
       tagName: body.tagName,
+      eventName: body.eventName || undefined,
+      inactiveDays: body.inactiveDays || undefined,
+      minCount: body.minCount || undefined,
+      timeWindowDays: body.timeWindowDays || undefined,
       fromName: body.fromName || undefined,
       fromEmail: body.fromEmail || undefined,
       replyTo: body.replyTo || undefined,

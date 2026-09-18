@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { CustomAttributeUpdate, SequenceEmailStep, SequenceList, SequenceNode, Tag, EmailTheme } from "@/lib/sequenzy";
+import type { CustomAttributeUpdate, EventSchemaSummary, SequenceEmailStep, SequenceList, SequenceNode, Tag, EmailTheme } from "@/lib/sequenzy";
 import type { EmailBrand } from "@/lib/email-template";
 import { wrapBrandedEmail } from "@/lib/email-template";
 import { RichTextEditor } from "@/components/email/RichTextEditor";
 import { DevicePreview } from "@/components/email/DevicePreview";
+import { EventNameField } from "../EventNameField";
+import { DelayFields, emptyDelay } from "./DelayFields";
 import { isSupportedNodeType, isTriggerNode } from "./types";
 
 export function NodeConfigPanel({
@@ -13,6 +15,7 @@ export function NodeConfigPanel({
   email,
   allTags,
   lists,
+  knownEvents,
   theme,
   brand,
   onSave,
@@ -23,6 +26,7 @@ export function NodeConfigPanel({
   email?: SequenceEmailStep;
   allTags: Tag[];
   lists: SequenceList[];
+  knownEvents: EventSchemaSummary[];
   theme?: EmailTheme;
   brand?: EmailBrand;
   onSave: (changes: Record<string, unknown>) => Promise<void>;
@@ -62,7 +66,7 @@ export function NodeConfigPanel({
     case "logic_delay":
       return <DelayPanel node={node} onSave={onSave} onDelete={onDelete} onClose={onClose} />;
     case "logic_wait_for_event":
-      return <WaitForEventPanel node={node} onSave={onSave} onDelete={onDelete} onClose={onClose} />;
+      return <WaitForEventPanel node={node} knownEvents={knownEvents} onSave={onSave} onDelete={onDelete} onClose={onClose} />;
     case "action_add_tag":
     case "action_remove_tag":
       return <TagActionPanel node={node} allTags={allTags} onSave={onSave} onDelete={onDelete} onClose={onClose} />;
@@ -196,15 +200,15 @@ function DelayPanel({
   onClose: () => void;
 }) {
   const c = node.config;
-  const [days, setDays] = useState(Number(c?.delayDays ?? 0));
-  const [hours, setHours] = useState(Number(c?.delayHours ?? 0));
-  const [minutes, setMinutes] = useState(Number(c?.delayMinutes ?? 0));
+  const [delay, setDelay] = useState(
+    emptyDelay({ days: Number(c?.delayDays ?? 0), hours: Number(c?.delayHours ?? 0), minutes: Number(c?.delayMinutes ?? 0) })
+  );
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     setSaving(true);
     try {
-      await onSave({ delay: { days, hours, minutes } });
+      await onSave({ delay });
     } finally {
       setSaving(false);
     }
@@ -212,38 +216,7 @@ function DelayPanel({
 
   return (
     <Panel title="Delay" onClose={onClose}>
-      <div className="grid grid-cols-3 gap-2">
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-gray-500">Days</span>
-          <input
-            type="number"
-            min={0}
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-gray-500">Hours</span>
-          <input
-            type="number"
-            min={0}
-            value={hours}
-            onChange={(e) => setHours(Number(e.target.value))}
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-gray-500">Minutes</span>
-          <input
-            type="number"
-            min={0}
-            value={minutes}
-            onChange={(e) => setMinutes(Number(e.target.value))}
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
-          />
-        </label>
-      </div>
+      <DelayFields value={delay} onChange={setDelay} />
       <PanelActions onSave={handleSave} onDelete={onDelete} saving={saving} />
     </Panel>
   );
@@ -251,11 +224,13 @@ function DelayPanel({
 
 function WaitForEventPanel({
   node,
+  knownEvents,
   onSave,
   onDelete,
   onClose,
 }: {
   node: SequenceNode;
+  knownEvents: EventSchemaSummary[];
   onSave: (changes: Record<string, unknown>) => Promise<void>;
   onDelete: () => void;
   onClose: () => void;
@@ -277,14 +252,7 @@ function WaitForEventPanel({
 
   return (
     <Panel title="Wait for Event" onClose={onClose}>
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-gray-500">Event name</span>
-        <input
-          value={eventName}
-          onChange={(e) => setEventName(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-        />
-      </label>
+      <EventNameField id="edit-wait" value={eventName} onChange={setEventName} knownEvents={knownEvents} />
       <div className="grid grid-cols-2 gap-2">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-gray-500">Timeout (days)</span>

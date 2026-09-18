@@ -1,25 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import type { CustomAttributeUpdate, InsertableStep, SequenceList, Tag } from "@/lib/sequenzy";
+import type { CustomAttributeUpdate, EventSchemaSummary, InsertableStep, SequenceList, Tag } from "@/lib/sequenzy";
 import { ADD_STEP_TYPES, type SupportedNodeType } from "./types";
+import { DelayFields, emptyDelay } from "./DelayFields";
+import { EventNameField } from "../EventNameField";
 
 export function AddStepModal({
   allTags,
   lists,
+  knownEvents,
   initialType = null,
   onSubmit,
   onCancel,
 }: {
   allTags: Tag[];
   lists: SequenceList[];
+  knownEvents: EventSchemaSummary[];
   initialType?: SupportedNodeType | null;
   onSubmit: (step: InsertableStep) => Promise<void>;
   onCancel: () => void;
 }) {
   const [type, setType] = useState<SupportedNodeType | null>(initialType);
   const [subject, setSubject] = useState("");
-  const [delayDays, setDelayDays] = useState(1);
+  const [delay, setDelay] = useState(emptyDelay());
   const [eventName, setEventName] = useState("");
   const [timeoutDays, setTimeoutDays] = useState(7);
   const [timeoutAction, setTimeoutAction] = useState<"continue" | "exit">("continue");
@@ -52,8 +56,8 @@ export function AddStepModal({
         step = { subject, html: "<p></p>" };
         break;
       case "logic_delay":
-        if (delayDays < 1) return setError("Enter a delay of at least 1 day.");
-        step = { nodeType: "logic_delay", delay: { days: delayDays } };
+        if (delay.days === 0 && delay.hours === 0 && delay.minutes === 0) return setError("Enter a delay greater than zero.");
+        step = { nodeType: "logic_delay", delay };
         break;
       case "logic_wait_for_event":
         if (!eventName.trim()) return setError("Event name is required.");
@@ -132,32 +136,11 @@ export function AddStepModal({
               </label>
             )}
 
-            {type === "logic_delay" && (
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-gray-500">Wait (days)</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={delayDays}
-                  onChange={(e) => setDelayDays(Number(e.target.value))}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  autoFocus
-                />
-              </label>
-            )}
+            {type === "logic_delay" && <DelayFields value={delay} onChange={setDelay} />}
 
             {type === "logic_wait_for_event" && (
               <>
-                <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-gray-500">Event name</span>
-                  <input
-                    value={eventName}
-                    onChange={(e) => setEventName(e.target.value)}
-                    placeholder="e.g. order.placed"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    autoFocus
-                  />
-                </label>
+                <EventNameField id="add-step-wait" value={eventName} onChange={setEventName} knownEvents={knownEvents} autoFocus />
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block">
                     <span className="mb-1 block text-xs font-medium text-gray-500">Timeout (days)</span>

@@ -2,13 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Tag } from "@/lib/sequenzy";
+import type { EventSchemaSummary, SequenceTrigger, Tag } from "@/lib/sequenzy";
+import { EventNameField } from "./EventNameField";
 
-export function NewSequenceForm({ allTags }: { allTags: Tag[] }) {
+const TRIGGER_OPTIONS: { value: SequenceTrigger; label: string }[] = [
+  { value: "contact_added", label: "When a new contact is added" },
+  { value: "tag_added", label: "When a tag is added to a contact" },
+  { value: "event_received", label: "When an event is received" },
+  { value: "inactivity", label: "After a period of inactivity" },
+  { value: "frequency", label: "When an event happens a number of times" },
+];
+
+export function NewSequenceForm({ allTags, knownEvents }: { allTags: Tag[]; knownEvents: EventSchemaSummary[] }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [trigger, setTrigger] = useState<"contact_added" | "tag_added">("contact_added");
+  const [trigger, setTrigger] = useState<SequenceTrigger>("contact_added");
   const [tagName, setTagName] = useState(allTags[0]?.name ?? "");
+  const [eventName, setEventName] = useState("");
+  const [inactiveDays, setInactiveDays] = useState(30);
+  const [minCount, setMinCount] = useState(3);
+  const [timeWindowDays, setTimeWindowDays] = useState(30);
   const [mode, setMode] = useState<"blank" | "ai">("blank");
   const [goal, setGoal] = useState("");
   const [emailCount, setEmailCount] = useState(5);
@@ -27,6 +40,10 @@ export function NewSequenceForm({ allTags }: { allTags: Tag[] }) {
       setError("Choose a tag to trigger this sequence.");
       return;
     }
+    if ((trigger === "event_received" || trigger === "inactivity" || trigger === "frequency") && !eventName.trim()) {
+      setError("Enter the event name for this trigger.");
+      return;
+    }
     if (mode === "ai" && !goal.trim()) {
       setError("Describe what you want this sequence to do.");
       return;
@@ -40,6 +57,11 @@ export function NewSequenceForm({ allTags }: { allTags: Tag[] }) {
           name,
           trigger,
           tagName: trigger === "tag_added" ? tagName : undefined,
+          eventName:
+            trigger === "event_received" || trigger === "inactivity" || trigger === "frequency" ? eventName : undefined,
+          inactiveDays: trigger === "inactivity" ? inactiveDays : undefined,
+          minCount: trigger === "frequency" ? minCount : undefined,
+          timeWindowDays: trigger === "frequency" ? timeWindowDays : undefined,
           goal: mode === "ai" ? goal : undefined,
           emailCount: mode === "ai" ? emailCount : undefined,
           durationDays: mode === "ai" ? durationDays : undefined,
@@ -70,16 +92,19 @@ export function NewSequenceForm({ allTags }: { allTags: Tag[] }) {
         />
       </div>
 
-      <div>
+      <div className="space-y-2">
         <label className="mb-1 block text-xs font-medium text-gray-500">Trigger</label>
         <div className="flex flex-wrap items-center gap-3">
           <select
             value={trigger}
-            onChange={(e) => setTrigger(e.target.value as "contact_added" | "tag_added")}
+            onChange={(e) => setTrigger(e.target.value as SequenceTrigger)}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
           >
-            <option value="contact_added">When a new contact is added</option>
-            <option value="tag_added">When a tag is added to a contact</option>
+            {TRIGGER_OPTIONS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
           </select>
           {trigger === "tag_added" && (
             <select
@@ -95,6 +120,48 @@ export function NewSequenceForm({ allTags }: { allTags: Tag[] }) {
             </select>
           )}
         </div>
+
+        {(trigger === "event_received" || trigger === "inactivity" || trigger === "frequency") && (
+          <div className="space-y-2 rounded-lg bg-gray-50 p-3">
+            <EventNameField id="new-sequence-trigger" value={eventName} onChange={setEventName} knownEvents={knownEvents} />
+            {trigger === "inactivity" && (
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-gray-500">Days of inactivity</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={inactiveDays}
+                  onChange={(e) => setInactiveDays(Number(e.target.value))}
+                  className="w-full max-w-[160px] rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                />
+              </label>
+            )}
+            {trigger === "frequency" && (
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-gray-500">At least this many times</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={minCount}
+                    onChange={(e) => setMinCount(Number(e.target.value))}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-gray-500">Within (days)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={timeWindowDays}
+                    onChange={(e) => setTimeWindowDays(Number(e.target.value))}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div>

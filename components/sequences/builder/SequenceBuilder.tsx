@@ -9,6 +9,7 @@ import type {
   SequenceEdge,
   Tag,
   SequenceList,
+  EventSchemaSummary,
   EmailTheme,
   InsertableStep,
 } from "@/lib/sequenzy";
@@ -64,12 +65,14 @@ export function SequenceBuilder({
   sequence: initialSequence,
   allTags,
   lists,
+  knownEvents,
   theme,
   brand,
 }: {
   sequence: SequenceDetailType;
   allTags: Tag[];
   lists: SequenceList[];
+  knownEvents: EventSchemaSummary[];
   theme?: EmailTheme;
   brand?: EmailBrand;
 }) {
@@ -234,6 +237,7 @@ export function SequenceBuilder({
           email={selectedEmail}
           allTags={allTags}
           lists={lists}
+          knownEvents={knownEvents}
           theme={theme}
           brand={brand}
           onSave={handleSaveNode}
@@ -246,6 +250,7 @@ export function SequenceBuilder({
         <AddStepModal
           allTags={allTags}
           lists={lists}
+          knownEvents={knownEvents}
           initialType={addInitialType}
           onSubmit={handleAddStep}
           onCancel={closeAddModal}

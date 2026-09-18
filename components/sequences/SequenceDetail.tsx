@@ -7,6 +7,7 @@ import type {
   SequenceStepStats,
   Tag,
   SequenceList,
+  EventSchemaSummary,
   EmailTheme,
 } from "@/lib/sequenzy";
 import type { EmailBrand } from "@/lib/email-template";
@@ -27,12 +28,14 @@ export function SequenceDetail({
   sequence,
   allTags,
   lists,
+  knownEvents,
   theme,
   brand,
 }: {
   sequence: SequenceDetailType;
   allTags: Tag[];
   lists: SequenceList[];
+  knownEvents: EventSchemaSummary[];
   theme?: EmailTheme;
   brand?: EmailBrand;
 }) {
@@ -101,7 +104,7 @@ export function SequenceDetail({
         </div>
       )}
 
-      <SequenceBuilder sequence={sequence} allTags={allTags} lists={lists} theme={theme} brand={brand} />
+      <SequenceBuilder sequence={sequence} allTags={allTags} lists={lists} knownEvents={knownEvents} theme={theme} brand={brand} />
 
       {confirmDelete && (
         <ConfirmModal

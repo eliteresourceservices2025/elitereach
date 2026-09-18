@@ -784,7 +784,18 @@ export async function generateSubjects(topic: string, count = 5): Promise<string
 
 export type SequenceStatus = "draft" | "active" | "paused" | "archived";
 export type SequenceEffectiveStatus = "draft" | "live" | "enrollment_paused" | "paused" | "archived";
-export type SequenceTrigger = "contact_added" | "tag_added";
+export type SequenceTrigger = "contact_added" | "tag_added" | "event_received" | "inactivity" | "frequency";
+
+export type EventSchemaSummary = { eventName: string; label: string; category: string };
+
+/** The account's documented built-in events (e.g. ecommerce.order_placed) —
+ * used to populate an event-name picker. Custom events triggered via webhooks
+ * or the API aren't listed here (they're freeform), so callers should still
+ * accept a typed-in value rather than restrict to this list. */
+export async function listEventSchemas(): Promise<EventSchemaSummary[]> {
+  const res = await request<{ success: boolean; events: EventSchemaSummary[] }>("/events/schemas");
+  return res.events;
+}
 
 export type Sequence = {
   id: string;
@@ -944,6 +955,10 @@ export async function createSequence(
     name: string;
     trigger: SequenceTrigger;
     tagName?: string;
+    eventName?: string;
+    inactiveDays?: number;
+    minCount?: number;
+    timeWindowDays?: number;
     steps?: SequenceStepInput[];
     goal?: string;
     emailCount?: number;
@@ -961,6 +976,14 @@ export async function createSequence(
     bccEmails: input.bccEmails && input.bccEmails.length > 0 ? input.bccEmails : undefined,
   };
   if (input.trigger === "tag_added") body.tagName = input.tagName;
+  if (input.trigger === "event_received" || input.trigger === "inactivity" || input.trigger === "frequency") {
+    body.eventName = input.eventName;
+  }
+  if (input.trigger === "inactivity") body.inactiveDays = input.inactiveDays;
+  if (input.trigger === "frequency") {
+    body.minCount = input.minCount;
+    body.timeWindowDays = input.timeWindowDays;
+  }
 
   if (input.goal) {
     body.goal = input.goal;
