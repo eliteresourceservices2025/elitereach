@@ -806,9 +806,41 @@ export type SequenceEmailStep = {
   nodeType: string;
 };
 
+export type SequenceNodeUpdateHints = {
+  tool: string;
+  editableFields: string[];
+  managedFields: string[];
+  notes: string[];
+  expectedUpdatedAt: string;
+};
+
+/**
+ * The node/edge graph shape as documented at docs.sequenzy.com — nodeType is
+ * kept as a broad string rather than a strict union because the graph can
+ * contain node types we don't render an editor for yet (branch, webhook, ai,
+ * sms, discount, ab_test), which the builder UI shows as read-only.
+ */
+export type SequenceNode = {
+  id: string;
+  nodeType: string;
+  config: Record<string, unknown>;
+  position?: { x: number; y: number };
+  structuralStepNumber?: number;
+  updateHints?: SequenceNodeUpdateHints;
+};
+
+export type SequenceEdge = {
+  sourceNodeId: string;
+  targetNodeId: string;
+  condition?: { branchId: string; label?: string };
+};
+
 export type SequenceDetail = Sequence & {
   trigger: string;
   emails: SequenceEmailStep[];
+  nodes: SequenceNode[];
+  edges: SequenceEdge[];
+  graphRevision: string;
   fromName?: string | null;
   fromEmail?: string | null;
   replyToName?: string | null;
@@ -822,6 +854,76 @@ export type SequenceStepInput = {
   html: string;
   delayDays: number;
 };
+
+// ---- Sequence builder (node graph) ----
+//
+// Documented at docs.sequenzy.com/api-reference/sequences/update — everything
+// here goes through the same PUT endpoint with a different top-level key
+// (insertSteps / nodeUpdates / graphEdit). There's no separate REST resource
+// per node.
+
+export type CustomAttributeUpdate = { name: string; value: string; valueType: "text" | "number" | "boolean" };
+
+export type InsertableStep =
+  | { subject: string; previewText?: string; html: string; delay?: { days?: number; hours?: number; minutes?: number } }
+  | { nodeType: "logic_delay"; delay: { days?: number; hours?: number; minutes?: number } }
+  | {
+      nodeType: "logic_wait_for_event";
+      config: { eventName: string; timeoutDays: number; timeoutAction: "continue" | "exit"; label?: string };
+    }
+  | { nodeType: "action_add_tag" | "action_remove_tag"; config: { tagName: string } }
+  | { nodeType: "action_add_to_list" | "action_remove_from_list"; config: { listId: string } }
+  | {
+      nodeType: "action_update_attributes";
+      config: { firstName?: string; lastName?: string; customAttributeUpdates?: CustomAttributeUpdate[] };
+    };
+
+// Note: the PUT response for insertSteps/nodeUpdates/graphEdit is a slim
+// mutation-result shape (id, updated counts, insertedNodeIds, etc.) — NOT the
+// same shape as GET's full graph. Each of these re-fetches the sequence
+// afterward so callers always get the complete, current nodes/edges/emails.
+
+export async function insertSequenceSteps(
+  id: string,
+  input: { afterNodeId?: string; steps: InsertableStep[]; confirmStructuralChange?: boolean }
+): Promise<SequenceDetail> {
+  await request(`/sequences/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: {
+      insertSteps: { afterNodeId: input.afterNodeId, steps: input.steps },
+      confirmStructuralChange: input.confirmStructuralChange,
+    },
+  });
+  return getSequence(id);
+}
+
+export async function updateSequenceNode(
+  id: string,
+  input: { nodeId: string; expectedUpdatedAt?: string; changes: Record<string, unknown>; confirmLiveChange?: boolean }
+): Promise<SequenceDetail> {
+  await request(`/sequences/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: {
+      nodeUpdates: [{ nodeId: input.nodeId, expectedUpdatedAt: input.expectedUpdatedAt, changes: input.changes }],
+      confirmLiveChange: input.confirmLiveChange,
+    },
+  });
+  return getSequence(id);
+}
+
+export async function deleteSequenceNode(
+  id: string,
+  input: { nodeId: string; graphRevision: string; edges?: SequenceEdge[]; confirmStructuralChange?: boolean }
+): Promise<SequenceDetail> {
+  await request(`/sequences/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: {
+      graphEdit: { action: "delete_node", nodeId: input.nodeId, expectedRevision: input.graphRevision, edges: input.edges },
+      confirmStructuralChange: input.confirmStructuralChange,
+    },
+  });
+  return getSequence(id);
+}
 
 export async function listSequences(): Promise<{ data: Sequence[] }> {
   const res = await request<{ success: boolean; sequences: Sequence[] }>("/sequences");
@@ -924,7 +1026,14 @@ export async function sendSequenceStepTest(sequenceId: string, nodeId: string, r
   });
 }
 
-// ---- Lists (internal use — Sequenzy forms require a list) ----
+// ---- Lists ----
+
+export type SequenceList = { id: string; name: string };
+
+export async function listLists(): Promise<SequenceList[]> {
+  const res = await request<{ success: boolean; lists: SequenceList[] }>("/lists");
+  return res.lists;
+}
 
 export async function createList(name: string): Promise<{ id: string; name: string }> {
   const res = await request<{ success: boolean; list: { id: string; name: string } }>("/lists", {
