@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { SignupForm } from "@/lib/sequenzy";
 import { EmbedCodeDisplay } from "./EmbedCodeDisplay";
 
@@ -29,6 +30,9 @@ export function FormTable() {
                 {form.status} · {form.submissionCount.toLocaleString()} submission{form.submissionCount === 1 ? "" : "s"}
               </p>
             </div>
+            <Link href={`/forms/${form.id}/edit`} className="text-sm text-elite-violet hover:underline">
+              Edit
+            </Link>
           </div>
           <div className="mt-3">
             <EmbedCodeDisplay formId={form.id} />

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createForm, createList, listForms, SequenzyError } from "@/lib/sequenzy";
+import { createForm, createList, listForms, updateForm, SequenzyError, type FormBlock, type FormTheme } from "@/lib/sequenzy";
 
 export async function GET() {
   try {
@@ -12,25 +12,38 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
+  const body = (await request.json().catch(() => null)) as {
+    name?: string;
+    tagIds?: string[];
+    blocks?: FormBlock[];
+    buttonText?: string;
+    successMessage?: string;
+    redirectUrl?: string;
+    theme?: FormTheme;
+  } | null;
   if (!body?.name) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
+  }
+  if (!body.blocks?.length) {
+    return NextResponse.json({ error: "blocks[] is required" }, { status: 400 });
   }
 
   try {
     // Sequenzy forms require a list; we manage one hidden list per form.
     const list = await createList(`EliteReach form: ${body.name}`);
-    const result = await createForm({
+    const created = await createForm({
       name: body.name,
       listIds: [list.id],
-      tagIds: body.tagId ? [body.tagId] : undefined,
-      headline: body.headline,
-      description: body.description,
+      tagIds: body.tagIds,
       buttonText: body.buttonText,
-      showFirstName: body.showFirstName,
       successMessage: body.successMessage,
+      redirectUrl: body.redirectUrl,
+      theme: body.theme,
     });
-    return NextResponse.json(result, { status: 201 });
+    // Custom field/layout blocks can only be set via a follow-up PATCH —
+    // creation only accepts the simple template params above.
+    const result = await updateForm(created.form.id, { blocks: body.blocks });
+    return NextResponse.json({ form: result.form, embed: result.embed ?? created.embed }, { status: 201 });
   } catch (err) {
     if (err instanceof SequenzyError) return NextResponse.json(err.body, { status: err.status });
     return NextResponse.json({ error: "Failed to create form" }, { status: 500 });

@@ -1244,6 +1244,67 @@ export async function createList(name: string): Promise<{ id: string; name: stri
 
 // ---- Signup forms (widgets) ----
 
+export type FormTheme = {
+  accentColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  mutedTextColor?: string;
+  cardColor?: string;
+  borderColor?: string;
+  borderRadius?: number;
+  headingFontFamily?: string;
+  bodyFontFamily?: string;
+  density?: "compact" | "balanced" | "spacious";
+};
+
+export type FormFieldBlock = {
+  id: string;
+  kind: "form-field";
+  fieldType: "text" | "email" | "phone" | "number" | "textarea" | "select" | "radio" | "checkbox" | "consent" | "hidden";
+  name: string;
+  label?: string;
+  showLabel?: boolean;
+  placeholder?: string;
+  required?: boolean;
+  defaultValue?: string;
+  mapsTo?: "email" | "firstName" | "lastName" | "phone" | "customAttribute";
+  options?: { value: string; label?: string }[];
+  width?: "full" | "half";
+  /** Only meaningful for fieldType "consent" — the label text next to the checkbox. */
+  consentText?: string;
+};
+
+/**
+ * The kinds we build editor UI for. Sequenzy's API supports several more
+ * (form-step, group, button, custom-html, feature-grid, testimonial,
+ * countdown, error-state) that we don't render a picker for — FormBlock's
+ * catch-all member preserves any of those unchanged on save instead of
+ * silently dropping them, since `updateForm`'s `blocks` is a full replace.
+ */
+export type FormBlock =
+  | FormFieldBlock
+  | { id: string; kind: "heading"; content: string; level?: 1 | 2 | 3; align?: "left" | "center" | "right" }
+  | { id: string; kind: "text"; content: string; variant?: "paragraph" | "eyebrow" | "caption"; align?: "left" | "center" | "right" }
+  | { id: string; kind: "image"; src: string; alt?: string; fit?: "cover" | "contain" }
+  | { id: string; kind: "divider" }
+  | { id: string; kind: "spacer"; height?: number }
+  | { id: string; kind: "submit-button"; text: string }
+  | { id: string; kind: "success-screen"; heading?: string; message?: string }
+  | ({ id: string; kind: string } & Record<string, unknown>);
+
+export type SignupFormContent = {
+  theme?: FormTheme;
+  blocks?: FormBlock[];
+  settings?: {
+    listMode?: string;
+    listIds?: string[];
+    tagIds?: string[];
+    duplicateStrategy?: string;
+    afterSubmission?: string;
+    redirectUrl?: string;
+  };
+};
+
 export type SignupForm = {
   id: string;
   name: string;
@@ -1251,6 +1312,10 @@ export type SignupForm = {
   submissionCount: number;
   actionUrl: string;
   url: string;
+  content?: SignupFormContent;
+  publishedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type FormEmbed = {
@@ -1265,6 +1330,13 @@ export async function listForms(): Promise<{ data: SignupForm[] }> {
   return { data: res.forms };
 }
 
+/** Sequenzy has no single-form GET — the list endpoint returns each form's
+ * full content (docs: "Read the current blocks with GET /api/v1/forms"). */
+export async function getForm(id: string): Promise<SignupForm | undefined> {
+  const { data } = await listForms();
+  return data.find((f) => f.id === id);
+}
+
 export async function createForm(input: {
   name: string;
   listIds: string[];
@@ -1273,13 +1345,17 @@ export async function createForm(input: {
   description?: string;
   buttonText?: string;
   showFirstName?: boolean;
+  showLastName?: boolean;
   successMessage?: string;
+  redirectUrl?: string;
+  duplicateStrategy?: "skip" | "merge" | "overwrite";
+  theme?: FormTheme;
 }): Promise<{ form: SignupForm; embed: FormEmbed }> {
   const res = await request<{ success: boolean; form: SignupForm; embed: FormEmbed }>("/forms", {
     method: "POST",
     body: {
       ...input,
-      theme: { accentColor: "#8a2be2", borderRadius: 8 },
+      theme: input.theme ?? { accentColor: "#8a2be2", borderRadius: 8 },
     },
   });
   return { form: res.form, embed: res.embed };
@@ -1292,28 +1368,21 @@ export async function getFormEmbed(formId: string): Promise<{ form: SignupForm; 
   return { form: res.form, embed: res.embed };
 }
 
-export type FormFieldBlock = {
-  id: string;
-  kind: "form-field";
-  fieldType: "text" | "email" | "phone" | "number" | "textarea" | "select" | "radio" | "checkbox" | "consent" | "hidden";
-  name: string;
-  label?: string;
-  placeholder?: string;
-  required?: boolean;
-  mapsTo?: "email" | "firstName" | "lastName" | "phone" | "customAttribute";
-  options?: { value: string; label?: string }[];
-  width?: "full" | "half";
-};
-
-export type FormBlock =
-  | FormFieldBlock
-  | { id: string; kind: "heading"; content: string; level?: 1 | 2 | 3 }
-  | { id: string; kind: "text"; content: string; variant?: "paragraph" | "eyebrow" | "caption" }
-  | { id: string; kind: "submit-button"; text: string };
-
 export async function updateForm(
   id: string,
-  input: Partial<{ blocks: FormBlock[]; headline: string; description: string; buttonText: string; successMessage: string; theme: object }>
+  input: Partial<{
+    name: string;
+    listIds: string[];
+    tagIds: string[];
+    blocks: FormBlock[];
+    headline: string;
+    description: string;
+    buttonText: string;
+    successMessage: string;
+    redirectUrl: string;
+    duplicateStrategy: "skip" | "merge" | "overwrite";
+    theme: FormTheme;
+  }>
 ): Promise<{ form: SignupForm; embed?: FormEmbed }> {
   const res = await request<{ success: boolean; form: SignupForm; embed?: FormEmbed }>(`/forms/${encodeURIComponent(id)}`, {
     method: "PATCH",
