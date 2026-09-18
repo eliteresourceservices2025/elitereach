@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { GitBranch } from "lucide-react";
 import type { CustomAttributeUpdate, EventSchemaSummary, InsertableStep, SequenceList, Tag } from "@/lib/sequenzy";
 import { ADD_STEP_TYPES, type SupportedNodeType } from "./types";
 import { DelayFields, emptyDelay } from "./DelayFields";
@@ -12,6 +13,7 @@ export function AddStepModal({
   knownEvents,
   initialType = null,
   onSubmit,
+  onSelectBranch,
   onCancel,
 }: {
   allTags: Tag[];
@@ -19,6 +21,7 @@ export function AddStepModal({
   knownEvents: EventSchemaSummary[];
   initialType?: SupportedNodeType | null;
   onSubmit: (step: InsertableStep) => Promise<void>;
+  onSelectBranch: () => void;
   onCancel: () => void;
 }) {
   const [type, setType] = useState<SupportedNodeType | null>(initialType);
@@ -116,6 +119,17 @@ export function AddStepModal({
                 <p className="text-xs text-gray-400">{t.description}</p>
               </button>
             ))}
+            <button
+              type="button"
+              onClick={onSelectBranch}
+              className="flex w-full items-start gap-2 rounded-lg border border-gray-200 p-3 text-left hover:border-fuchsia-300 hover:bg-fuchsia-50"
+            >
+              <GitBranch className="mt-0.5 h-4 w-4 shrink-0 text-fuchsia-600" />
+              <span>
+                <p className="text-sm font-medium text-elite-navy-dark">Branch (If/Else)</p>
+                <p className="text-xs text-gray-400">Split the sequence based on a condition.</p>
+              </span>
+            </button>
           </div>
         ) : (
           <div className="mt-3 space-y-3">

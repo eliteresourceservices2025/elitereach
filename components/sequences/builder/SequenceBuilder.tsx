@@ -187,12 +187,11 @@ export function SequenceBuilder({
       }
 
       const addId = `add-${e.sourceNodeId}->${e.targetNodeId}`;
-      const midDepth = (sourcePos.depth + targetPos.depth) / 2;
       const midColumn = (sourcePos.column + targetPos.column) / 2;
       nodes.push({
         id: addId,
         type: "addStep",
-        position: { x: midColumn * COLUMN_WIDTH, y: midDepth * (ROW_HEIGHT + GAP_HEIGHT + 48) + ROW_HEIGHT + 12 },
+        position: { x: midColumn * COLUMN_WIDTH, y: sourcePos.depth * (ROW_HEIGHT + GAP_HEIGHT + 48) + ROW_HEIGHT + 24 },
         data: { onClick: () => openAddModal(e.sourceNodeId) },
         draggable: false,
         selectable: false,
@@ -406,6 +405,11 @@ export function SequenceBuilder({
           knownEvents={knownEvents}
           initialType={addInitialType}
           onSubmit={handleAddStep}
+          onSelectBranch={() => {
+            setBranchAfterNodeId(addAfterNodeId);
+            closeAddModal();
+            setShowBranchModal(true);
+          }}
           onCancel={closeAddModal}
         />
       )}
