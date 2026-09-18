@@ -9,9 +9,9 @@ Internal email marketing tool for Elite Resource Services. It's a thin, branded 
 - **Sequences** — a visual drag-and-drop canvas (React Flow) matching Sequenzy's own automation builder: Send Email (with AI-drafted content), Delay, Wait for Event, Add/Remove Tag, Add/Remove from List, Update Subscriber, and If/Else branching steps; business-specific trigger presets (new inquiry, discovery call booked, proposal sent, client onboarded, industry leads, form subscriptions, and more) alongside a full custom/advanced trigger option; manual contact enrollment; and a way to send a test email for one step or run a live test of the whole sequence
 - **Transactional email** — a one-off send tool for a specific recipient, outside campaigns/sequences, with a confirm-before-send step since it sends immediately
 - **Sent emails** — a log of everything sent (campaigns, sequences, transactional), filterable by type, showing delivery/open/click/bounce status
-- **Forms** — newsletter signup and contact/inquiry forms, embeddable on the ERS website, with staff email notifications on new inquiries
+- **Forms** — a visual drag-and-drop form builder (fields, layout, content blocks, theme colors, live preview) on top of Sequenzy's native Forms API — all 10 field types, half-width field pairing, tag/list targeting on submit, and an edit flow for forms created earlier; embeddable anywhere
 - **Analytics** — send/open/click/bounce/unsub rates, bounce & complaint breakdowns, a sends-per-day trend chart, and a per-email leaderboard, all filterable by time period and email type
-- **Settings** — Email Design (brand colors, style presets, typography, spacing, and colors, with a live preview), Product Info (name, logo, social links, legal details), and Notifications (new subscriber / form submitted / campaign finished / weekly report), all reading and writing the same Sequenzy account data the team sees in Sequenzy's own dashboard
+- **Settings** — Email Design (brand colors, style presets, typography, spacing, and colors, with a live preview), Product Info (name, logo, social links, legal details), Notifications (new subscriber / form submitted / campaign finished / weekly report), a Labels directory (every label in use across sequences and campaigns), and a Goals overview (every sequence's conversion goals and their aggregate conversions/revenue) — all reading and writing the same Sequenzy account data the team sees in Sequenzy's own dashboard
 - **Auth** — signed-cookie sessions gated by an email whitelist, with two roles: admins (full access, including Settings) and senders
 
 ## Getting started
@@ -36,17 +36,12 @@ COOKIE_SECRET=a-long-random-secret
 
 SEQUENZY_API_KEY=your-sequenzy-api-key
 SEQUENZY_API_BASE_URL=https://api.sequenzy.com/api/v1
-
-# Public URL of this app once deployed — used to register inquiry-form
-# staff-notification webhooks. Sequenzy can't reach localhost, so webhook
-# registration is skipped while this is set to a local address.
-APP_BASE_URL=https://your-deployed-url.vercel.app
 ```
 
 ## Stack
 
-Next.js (App Router) · TypeScript · Tailwind CSS · TipTap (rich text) · GrapesJS (drag-and-drop builder) · jose (signed session cookies)
+Next.js (App Router) · TypeScript · Tailwind CSS · TipTap (rich text) · GrapesJS (drag-and-drop email builder) · @dnd-kit (drag-and-drop form builder) · React Flow (sequence builder) · jose (signed session cookies)
 
 ## Deployment
 
-Built for zero-cost hosting on [Vercel](https://vercel.com). Since there's no database, deployment is just: set the environment variables above in the Vercel project settings, then push to the connected branch. Remember to update `APP_BASE_URL` to the real production URL after the first deploy — inquiry-form staff notifications depend on it.
+Built for zero-cost hosting on [Vercel](https://vercel.com). Since there's no database, deployment is just: set the environment variables above in the Vercel project settings, then push to the connected branch.
