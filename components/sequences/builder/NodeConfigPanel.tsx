@@ -78,14 +78,19 @@ export function NodeConfigPanel({
 
 function Panel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold capitalize text-elite-navy-dark">{title}</h3>
-        <button onClick={onClose} className="text-xs text-gray-400 hover:text-gray-600">
-          Close
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+      <div
+        className="max-h-[85vh] w-full max-w-md space-y-3 overflow-y-auto rounded-xl bg-white p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold capitalize text-elite-navy-dark">{title}</h3>
+          <button onClick={onClose} className="text-xs text-gray-400 hover:text-gray-600">
+            Close
+          </button>
+        </div>
+        {children}
       </div>
-      {children}
     </div>
   );
 }

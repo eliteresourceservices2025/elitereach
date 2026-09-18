@@ -15,8 +15,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
-  if (!body?.name || !Array.isArray(body?.steps) || body.steps.length === 0) {
-    return NextResponse.json({ error: "name and at least one step are required" }, { status: 400 });
+  if (!body?.name) {
+    return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
   if (body.trigger === "tag_added" && !body.tagName) {
     return NextResponse.json({ error: "tagName is required for the tag_added trigger" }, { status: 400 });
@@ -33,15 +33,21 @@ export async function POST(request: NextRequest) {
       replyTo: body.replyTo || undefined,
       replyToName: body.replyToName || undefined,
       bccEmails: Array.isArray(body.bccEmails) && body.bccEmails.length > 0 ? body.bccEmails : undefined,
-      steps: body.steps.map((step: { subject: string; previewText?: string; bodyHtml: string; delayDays: number; wrap?: boolean }) => ({
-        subject: step.subject,
-        previewText: step.previewText,
-        html:
-          step.wrap === false
-            ? step.bodyHtml
-            : wrapBrandedEmail({ previewText: step.previewText, bodyHtml: step.bodyHtml, theme, brand }),
-        delayDays: step.delayDays,
-      })),
+      goal: body.goal || undefined,
+      emailCount: body.emailCount || undefined,
+      durationDays: body.durationDays || undefined,
+      emailStyle: body.emailStyle || undefined,
+      steps: Array.isArray(body.steps)
+        ? body.steps.map((step: { subject: string; previewText?: string; bodyHtml: string; delayDays: number; wrap?: boolean }) => ({
+            subject: step.subject,
+            previewText: step.previewText,
+            html:
+              step.wrap === false
+                ? step.bodyHtml
+                : wrapBrandedEmail({ previewText: step.previewText, bodyHtml: step.bodyHtml, theme, brand }),
+            delayDays: step.delayDays,
+          }))
+        : undefined,
     });
     return NextResponse.json(sequence, { status: 201 });
   } catch (err) {

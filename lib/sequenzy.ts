@@ -930,12 +930,25 @@ export async function listSequences(): Promise<{ data: Sequence[] }> {
   return { data: res.sequences };
 }
 
+export type SequenceEmailStyle = "visual" | "plain";
+
+/**
+ * Three ways to create a sequence, matching Sequenzy's own /sequences POST:
+ * explicit `steps`, an AI `goal` (Sequenzy generates the email content
+ * itself), or neither — "the same blank trigger-to-completion draft the
+ * dashboard starts with" per their docs, which is what the visual builder
+ * uses so a brand-new sequence lands straight on an empty canvas.
+ */
 export async function createSequence(
   input: {
     name: string;
     trigger: SequenceTrigger;
     tagName?: string;
-    steps: SequenceStepInput[];
+    steps?: SequenceStepInput[];
+    goal?: string;
+    emailCount?: number;
+    durationDays?: number;
+    emailStyle?: SequenceEmailStyle;
   } & Pick<SenderReplyFields, "fromName" | "fromEmail" | "replyTo" | "replyToName" | "bccEmails">
 ): Promise<{ id: string }> {
   const body: Record<string, unknown> = {
@@ -946,15 +959,24 @@ export async function createSequence(
     replyTo: input.replyTo || undefined,
     replyToName: input.replyToName || undefined,
     bccEmails: input.bccEmails && input.bccEmails.length > 0 ? input.bccEmails : undefined,
-    steps: input.steps.map((step) => ({
+  };
+  if (input.trigger === "tag_added") body.tagName = input.tagName;
+
+  if (input.goal) {
+    body.goal = input.goal;
+    body.emailCount = input.emailCount;
+    body.durationDays = input.durationDays;
+    body.emailStyle = input.emailStyle;
+  } else if (input.steps && input.steps.length > 0) {
+    body.steps = input.steps.map((step) => ({
       type: "email",
       subject: step.subject,
       previewText: step.previewText || undefined,
       html: step.html,
       delay: { mode: "duration", days: step.delayDays },
-    })),
-  };
-  if (input.trigger === "tag_added") body.tagName = input.tagName;
+    }));
+  }
+
   const res = await request<{ success: boolean; sequence: { id: string } }>("/sequences", {
     method: "POST",
     body,

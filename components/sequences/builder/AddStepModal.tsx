@@ -7,15 +7,17 @@ import { ADD_STEP_TYPES, type SupportedNodeType } from "./types";
 export function AddStepModal({
   allTags,
   lists,
+  initialType = null,
   onSubmit,
   onCancel,
 }: {
   allTags: Tag[];
   lists: SequenceList[];
+  initialType?: SupportedNodeType | null;
   onSubmit: (step: InsertableStep) => Promise<void>;
   onCancel: () => void;
 }) {
-  const [type, setType] = useState<SupportedNodeType | null>(null);
+  const [type, setType] = useState<SupportedNodeType | null>(initialType);
   const [subject, setSubject] = useState("");
   const [delayDays, setDelayDays] = useState(1);
   const [eventName, setEventName] = useState("");

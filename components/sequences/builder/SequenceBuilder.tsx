@@ -17,6 +17,8 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { nodeTypes } from "./nodeComponents";
 import { AddStepModal } from "./AddStepModal";
 import { NodeConfigPanel } from "./NodeConfigPanel";
+import { StepPalette } from "./StepPalette";
+import type { SupportedNodeType } from "./types";
 
 const ROW_HEIGHT = 90;
 const GAP_HEIGHT = 60;
@@ -74,10 +76,28 @@ export function SequenceBuilder({
   const [sequence, setSequence] = useState(initialSequence);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [addAfterNodeId, setAddAfterNodeId] = useState<string | null>(null);
+  const [addInitialType, setAddInitialType] = useState<SupportedNodeType | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [confirmDeleteNodeId, setConfirmDeleteNodeId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const order = useMemo(() => buildLinearOrder(sequence.nodes, sequence.edges), [sequence.nodes, sequence.edges]);
+  const lastInsertableNodeId = useMemo(() => {
+    const nonEnd = order.filter((n) => n.config?.isEndNode !== true);
+    return nonEnd[nonEnd.length - 1]?.id;
+  }, [order]);
+
+  function openAddModal(afterNodeId: string | null, initialType: SupportedNodeType | null = null) {
+    setAddAfterNodeId(afterNodeId);
+    setAddInitialType(initialType);
+    setShowAddModal(true);
+  }
+
+  function closeAddModal() {
+    setShowAddModal(false);
+    setAddAfterNodeId(null);
+    setAddInitialType(null);
+  }
 
   const { rfNodes, rfEdges } = useMemo(() => {
     const nodes: Node[] = [];
@@ -106,7 +126,7 @@ export function SequenceBuilder({
           id: addId,
           type: "addStep",
           position: { x: 0, y },
-          data: { onClick: () => setAddAfterNodeId(node.id) },
+          data: { onClick: () => openAddModal(node.id) },
           draggable: false,
           selectable: false,
         });
@@ -126,7 +146,11 @@ export function SequenceBuilder({
     const res = await fetch(`/api/sequences/${sequence.id}/steps`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ afterNodeId: addAfterNodeId ?? undefined, step, confirmStructuralChange: sequence.status === "active" }),
+      body: JSON.stringify({
+        afterNodeId: addAfterNodeId ?? lastInsertableNodeId,
+        step,
+        confirmStructuralChange: sequence.status === "active",
+      }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -134,7 +158,7 @@ export function SequenceBuilder({
     }
     const updated = await res.json();
     setSequence(updated);
-    setAddAfterNodeId(null);
+    closeAddModal();
   }
 
   async function handleSaveNode(changes: Record<string, unknown>) {
@@ -180,8 +204,10 @@ export function SequenceBuilder({
   return (
     <div className="space-y-2">
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <div className="grid gap-4 lg:grid-cols-[1fr,340px]">
-        <div style={{ height: 600 }} className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+      <div className="flex gap-4">
+        <StepPalette onSelect={(type) => openAddModal(null, type)} />
+
+        <div style={{ height: 600 }} className="flex-1 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
           <ReactFlowProvider>
             <ReactFlow
               nodes={rfNodes}
@@ -200,30 +226,30 @@ export function SequenceBuilder({
             </ReactFlow>
           </ReactFlowProvider>
         </div>
-
-        <div>
-          {selectedNode ? (
-            <NodeConfigPanel
-              node={selectedNode}
-              email={selectedEmail}
-              allTags={allTags}
-              lists={lists}
-              theme={theme}
-              brand={brand}
-              onSave={handleSaveNode}
-              onDelete={() => setConfirmDeleteNodeId(selectedNode.id)}
-              onClose={() => setSelectedNodeId(null)}
-            />
-          ) : (
-            <div className="rounded-xl bg-white p-4 text-sm text-gray-400 shadow-sm">
-              Click a step to edit it, or use a + button to add a new one.
-            </div>
-          )}
-        </div>
       </div>
 
-      {addAfterNodeId && (
-        <AddStepModal allTags={allTags} lists={lists} onSubmit={handleAddStep} onCancel={() => setAddAfterNodeId(null)} />
+      {selectedNode && (
+        <NodeConfigPanel
+          node={selectedNode}
+          email={selectedEmail}
+          allTags={allTags}
+          lists={lists}
+          theme={theme}
+          brand={brand}
+          onSave={handleSaveNode}
+          onDelete={() => setConfirmDeleteNodeId(selectedNode.id)}
+          onClose={() => setSelectedNodeId(null)}
+        />
+      )}
+
+      {showAddModal && (
+        <AddStepModal
+          allTags={allTags}
+          lists={lists}
+          initialType={addInitialType}
+          onSubmit={handleAddStep}
+          onCancel={closeAddModal}
+        />
       )}
 
       {confirmDeleteNodeId && (
