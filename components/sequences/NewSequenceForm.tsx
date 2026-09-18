@@ -13,15 +13,77 @@ const TRIGGER_OPTIONS: { value: SequenceTrigger; label: string }[] = [
   { value: "frequency", label: "When an event happens a number of times" },
 ];
 
+// Business-specific shortcuts for our client journey (inquiry -> discovery
+// call -> proposal -> onboarded) and our biggest industry segment, on top of
+// the raw Sequenzy trigger mechanisms below. "Custom / advanced" drops back
+// to picking the raw trigger type directly for anything not covered here.
+type TriggerPreset =
+  | { id: string; label: string; description: string; trigger: "contact_added" }
+  | { id: string; label: string; description: string; trigger: "tag_added"; tagName: string };
+
+const TRIGGER_PRESETS: TriggerPreset[] = [
+  {
+    id: "new_inquiry",
+    label: "New inquiry (lead added)",
+    description: "Starts as soon as a new contact comes in — e.g. a form submission or a manual add.",
+    trigger: "contact_added",
+  },
+  {
+    id: "healthcare_lead",
+    label: "Healthcare industry lead",
+    description: 'Starts when a contact is tagged "healthcare-leads".',
+    trigger: "tag_added",
+    tagName: "healthcare-leads",
+  },
+  {
+    id: "discovery_call",
+    label: "Discovery call booked",
+    description: 'Starts when a contact is tagged "discovery-call-booked".',
+    trigger: "tag_added",
+    tagName: "discovery-call-booked",
+  },
+  {
+    id: "proposal_sent",
+    label: "Proposal sent",
+    description: 'Starts when a contact is tagged "proposal-sent".',
+    trigger: "tag_added",
+    tagName: "proposal-sent",
+  },
+  {
+    id: "onboarded",
+    label: "Client onboarded",
+    description: 'Starts when a contact is tagged "onboarded".',
+    trigger: "tag_added",
+    tagName: "onboarded",
+  },
+  {
+    id: "cold_lead",
+    label: "Lead gone cold",
+    description: 'Starts when a contact is tagged "cold-lead".',
+    trigger: "tag_added",
+    tagName: "cold-lead",
+  },
+];
+
 export function NewSequenceForm({ allTags, knownEvents }: { allTags: Tag[]; knownEvents: EventSchemaSummary[] }) {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [presetId, setPresetId] = useState<string>(TRIGGER_PRESETS[0].id);
   const [trigger, setTrigger] = useState<SequenceTrigger>("contact_added");
   const [tagName, setTagName] = useState(allTags[0]?.name ?? "");
   const [eventName, setEventName] = useState("");
   const [inactiveDays, setInactiveDays] = useState(30);
   const [minCount, setMinCount] = useState(3);
   const [timeWindowDays, setTimeWindowDays] = useState(30);
+  const isCustomTrigger = presetId === "custom";
+
+  function handlePresetChange(id: string) {
+    setPresetId(id);
+    const preset = TRIGGER_PRESETS.find((p) => p.id === id);
+    if (!preset) return; // "custom" — leave trigger/tagName/etc as whatever was last set
+    setTrigger(preset.trigger);
+    if (preset.trigger === "tag_added") setTagName(preset.tagName);
+  }
   const [mode, setMode] = useState<"blank" | "ai">("blank");
   const [goal, setGoal] = useState("");
   const [emailCount, setEmailCount] = useState(5);
@@ -94,34 +156,52 @@ export function NewSequenceForm({ allTags, knownEvents }: { allTags: Tag[]; know
 
       <div className="space-y-2">
         <label className="mb-1 block text-xs font-medium text-gray-500">Trigger</label>
-        <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={trigger}
-            onChange={(e) => setTrigger(e.target.value as SequenceTrigger)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          >
-            {TRIGGER_OPTIONS.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-          {trigger === "tag_added" && (
+        <select
+          value={presetId}
+          onChange={(e) => handlePresetChange(e.target.value)}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+        >
+          {TRIGGER_PRESETS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+          <option value="custom">Custom / advanced...</option>
+        </select>
+        {!isCustomTrigger && (
+          <p className="text-xs text-gray-400">{TRIGGER_PRESETS.find((p) => p.id === presetId)?.description}</p>
+        )}
+
+        {isCustomTrigger && (
+          <div className="flex flex-wrap items-center gap-3">
             <select
-              value={tagName}
-              onChange={(e) => setTagName(e.target.value)}
+              value={trigger}
+              onChange={(e) => setTrigger(e.target.value as SequenceTrigger)}
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
             >
-              {allTags.map((t) => (
-                <option key={t.id} value={t.name}>
-                  {t.name}
+              {TRIGGER_OPTIONS.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
                 </option>
               ))}
             </select>
-          )}
-        </div>
+            {trigger === "tag_added" && (
+              <select
+                value={tagName}
+                onChange={(e) => setTagName(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              >
+                {allTags.map((t) => (
+                  <option key={t.id} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
 
-        {(trigger === "event_received" || trigger === "inactivity" || trigger === "frequency") && (
+        {isCustomTrigger && (trigger === "event_received" || trigger === "inactivity" || trigger === "frequency") && (
           <div className="space-y-2 rounded-lg bg-gray-50 p-3">
             <EventNameField id="new-sequence-trigger" value={eventName} onChange={setEventName} knownEvents={knownEvents} />
             {trigger === "inactivity" && (
