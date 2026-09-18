@@ -29,3 +29,13 @@ export function tagColorHex(color?: string): string {
   if (color && color in TAG_COLOR_HEX) return TAG_COLOR_HEX[color as TagColor];
   return TAG_COLOR_HEX.violet;
 }
+
+/** Sequenzy's label API has no color field at all (unlike tags), so labels
+ * get a deterministic display color derived from their name — consistent
+ * across the app without storing anything extra. */
+export function labelColorHex(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  const color = TAG_COLORS[hash % TAG_COLORS.length];
+  return TAG_COLOR_HEX[color];
+}

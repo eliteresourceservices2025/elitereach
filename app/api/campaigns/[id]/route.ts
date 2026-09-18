@@ -35,6 +35,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   if (body.audience !== undefined) {
     update.targetLists = body.audience?.type === "tag" ? tagAudience(body.audience.tag) : allAudience();
   }
+  if (body.labels !== undefined) update.labels = body.labels;
 
   try {
     const campaign = await updateCampaign(id, update);

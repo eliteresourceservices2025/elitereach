@@ -6,6 +6,7 @@ import type { Campaign, CampaignMetrics, ClickedLink } from "@/lib/sequenzy";
 import { EmailPreview } from "@/components/email/EmailPreview";
 import { TestEmailButton } from "@/components/email/TestEmailButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { LabelsEditor } from "@/components/ui/LabelsEditor";
 
 export function CampaignDetail({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
@@ -18,6 +19,26 @@ export function CampaignDetail({ campaign }: { campaign: Campaign }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [labels, setLabels] = useState(campaign.labels ?? []);
+  const [labelsSaving, setLabelsSaving] = useState(false);
+
+  async function handleLabelsChange(next: string[]) {
+    setLabels(next); // optimistic
+    setLabelsSaving(true);
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labels: next }),
+      });
+      if (!res.ok) {
+        setActionError("Failed to update labels.");
+        setLabels(campaign.labels ?? []); // revert
+      }
+    } finally {
+      setLabelsSaving(false);
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/campaigns/${campaign.id}/render`)
@@ -92,6 +113,11 @@ export function CampaignDetail({ campaign }: { campaign: Campaign }) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-4">
+        <div className="rounded-xl bg-white p-5 shadow-sm">
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-400">Labels</p>
+          <LabelsEditor labels={labels} onChange={handleLabelsChange} disabled={labelsSaving} />
+        </div>
+
         <div className="rounded-xl bg-white p-5 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Recipients</p>
           <p className="mt-1 text-sm text-gray-700">{audience ? audience.summary : "Loading..."}</p>

@@ -12,7 +12,9 @@ import type {
 } from "@/lib/sequenzy";
 import type { EmailBrand } from "@/lib/email-template";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { LabelsEditor } from "@/components/ui/LabelsEditor";
 import { EnrollContactsModal } from "./EnrollContactsModal";
+import { GoalsModal } from "./GoalsModal";
 import { SequenceBuilder } from "./builder/SequenceBuilder";
 
 type Stats = {
@@ -21,6 +23,8 @@ type Stats = {
   clicked: number;
   openRate: number;
   clickRate: number;
+  conversions: number;
+  revenueCents: number;
   enrollmentCounts: { active: number; waiting: number; total: number };
   steps: SequenceStepStats[];
 };
@@ -46,6 +50,9 @@ export function SequenceDetail({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enrollModalMode, setEnrollModalMode] = useState<"enroll" | "test" | null>(null);
+  const [showGoals, setShowGoals] = useState(false);
+  const [labels, setLabels] = useState(sequence.labels ?? []);
+  const [labelsSaving, setLabelsSaving] = useState(false);
 
   useEffect(() => {
     fetch(`/api/sequences/${sequence.id}/stats`)
@@ -76,35 +83,67 @@ export function SequenceDetail({
     router.push("/sequences");
   }
 
+  async function handleLabelsChange(next: string[]) {
+    setLabels(next); // optimistic
+    setLabelsSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/sequences/${sequence.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labels: next }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Failed to update labels.");
+        setLabels(sequence.labels ?? []); // revert
+      }
+    } finally {
+      setLabelsSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-4 rounded-xl bg-white p-5 shadow-sm">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Status</p>
-          <p className="text-sm text-gray-700">{sequence.effectiveStatusSummary}</p>
+      <div className="space-y-3 rounded-xl bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center gap-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Status</p>
+            <p className="text-sm text-gray-700">{sequence.effectiveStatusSummary}</p>
+          </div>
+          <button
+            onClick={() => setShowGoals(true)}
+            className="ml-auto rounded-lg border border-elite-violet/30 px-4 py-2 text-sm font-medium text-elite-navy-dark hover:bg-elite-violet/5"
+          >
+            Goals
+          </button>
+          <button
+            onClick={() => setEnrollModalMode("test")}
+            className="rounded-lg border border-elite-violet/30 px-4 py-2 text-sm font-medium text-elite-navy-dark hover:bg-elite-violet/5"
+          >
+            Test sequence
+          </button>
+          <button
+            onClick={() => setEnrollModalMode("enroll")}
+            className="rounded-lg border border-elite-violet/30 px-4 py-2 text-sm font-medium text-elite-navy-dark hover:bg-elite-violet/5"
+          >
+            Enroll contacts
+          </button>
+          <button
+            onClick={toggleEnabled}
+            disabled={busy}
+            className="rounded-lg bg-elite-violet px-4 py-2 text-sm font-medium text-white hover:bg-elite-navy-dark disabled:opacity-60"
+          >
+            {sequence.acceptsNewEnrollments ? "Disable" : "Enable"}
+          </button>
+          <button onClick={() => setConfirmDelete(true)} className="text-sm text-red-500 hover:underline">
+            Delete
+          </button>
         </div>
-        <button
-          onClick={() => setEnrollModalMode("test")}
-          className="ml-auto rounded-lg border border-elite-violet/30 px-4 py-2 text-sm font-medium text-elite-navy-dark hover:bg-elite-violet/5"
-        >
-          Test sequence
-        </button>
-        <button
-          onClick={() => setEnrollModalMode("enroll")}
-          className="rounded-lg border border-elite-violet/30 px-4 py-2 text-sm font-medium text-elite-navy-dark hover:bg-elite-violet/5"
-        >
-          Enroll contacts
-        </button>
-        <button
-          onClick={toggleEnabled}
-          disabled={busy}
-          className="rounded-lg bg-elite-violet px-4 py-2 text-sm font-medium text-white hover:bg-elite-navy-dark disabled:opacity-60"
-        >
-          {sequence.acceptsNewEnrollments ? "Disable" : "Enable"}
-        </button>
-        <button onClick={() => setConfirmDelete(true)} className="text-sm text-red-500 hover:underline">
-          Delete
-        </button>
+        <div>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-400">Labels</p>
+          <LabelsEditor labels={labels} onChange={handleLabelsChange} disabled={labelsSaving} />
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -115,6 +154,8 @@ export function SequenceDetail({
           <Stat label="Active" value={stats.enrollmentCounts.active} />
           <Stat label="Sent (30d)" value={stats.sent} />
           <Stat label="Open rate" value={`${stats.openRate.toFixed(1)}%`} />
+          <Stat label="Conversions" value={stats.conversions} />
+          <Stat label="Revenue" value={`$${(stats.revenueCents / 100).toFixed(2)}`} />
         </div>
       )}
 
@@ -132,6 +173,10 @@ export function SequenceDetail({
 
       {enrollModalMode && (
         <EnrollContactsModal sequenceId={sequence.id} mode={enrollModalMode} onClose={() => setEnrollModalMode(null)} />
+      )}
+
+      {showGoals && (
+        <GoalsModal sequenceId={sequence.id} allTags={allTags} knownEvents={knownEvents} onClose={() => setShowGoals(false)} />
       )}
     </div>
   );

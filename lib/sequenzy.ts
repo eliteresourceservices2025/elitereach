@@ -681,7 +681,8 @@ export async function getCampaign(id: string): Promise<CampaignDetail> {
 export async function updateCampaign(
   id: string,
   input: Partial<
-    { name: string; subject: string; previewText: string; html: string; targetLists: CampaignAudience } & SenderReplyFields
+    { name: string; subject: string; previewText: string; html: string; targetLists: CampaignAudience; labels: string[] } &
+      SenderReplyFields
   >
 ): Promise<Campaign> {
   const res = await request<{ success: boolean; campaign: Campaign }>(`/campaigns/${encodeURIComponent(id)}`, {
@@ -797,6 +798,77 @@ export async function listEventSchemas(): Promise<EventSchemaSummary[]> {
   return res.events;
 }
 
+// ---- Sequence goals (conversion tracking & attribution) ----
+
+/** Sequenzy also supports "attribute_change" goals (subscriber field changed),
+ * but the create UI here only offers "event" and "tag_added" — the two that
+ * map onto conversion tracking and the tag vocabulary already used elsewhere
+ * in this app (e.g. "onboarded"). */
+export type GoalTriggerType = "event" | "tag_added" | "attribute_change";
+
+export type SequenceGoal = {
+  id: string;
+  name: string;
+  description: string | null;
+  scope: string;
+  automationId: string | null;
+  campaignId: string | null;
+  triggerType: GoalTriggerType;
+  triggerEventName: string | null;
+  triggerTagName: string | null;
+  attributePath: string | null;
+  attributeCondition: string | null;
+  attributeValue: string | null;
+  attributePreviousValue: string | null;
+  eventPropertyName: string | null;
+  eventPropertyLabel: string | null;
+  attributionWindowHours: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateGoalInput =
+  | {
+      name: string;
+      triggerType: "event";
+      triggerEventName: string;
+      eventPropertyName?: string;
+      eventPropertyLabel?: string;
+      attributionWindowHours?: number;
+      isActive?: boolean;
+    }
+  | { name: string; triggerType: "tag_added"; triggerTagName: string; attributionWindowHours?: number; isActive?: boolean };
+
+export async function listSequenceGoals(sequenceId: string): Promise<SequenceGoal[]> {
+  const res = await request<{ success: boolean; goals: SequenceGoal[] }>(`/sequences/${encodeURIComponent(sequenceId)}/goals`);
+  return res.goals;
+}
+
+export async function createSequenceGoal(sequenceId: string, input: CreateGoalInput): Promise<SequenceGoal> {
+  const res = await request<{ success: boolean; goal: SequenceGoal }>(`/sequences/${encodeURIComponent(sequenceId)}/goals`, {
+    method: "POST",
+    body: input,
+  });
+  return res.goal;
+}
+
+export async function updateSequenceGoal(
+  sequenceId: string,
+  goalId: string,
+  input: Partial<{ name: string; attributionWindowHours: number; isActive: boolean; eventPropertyName: string; eventPropertyLabel: string }>
+): Promise<SequenceGoal> {
+  const res = await request<{ success: boolean; goal: SequenceGoal }>(
+    `/sequences/${encodeURIComponent(sequenceId)}/goals/${encodeURIComponent(goalId)}`,
+    { method: "PATCH", body: input }
+  );
+  return res.goal;
+}
+
+export async function deleteSequenceGoal(sequenceId: string, goalId: string): Promise<void> {
+  await request(`/sequences/${encodeURIComponent(sequenceId)}/goals/${encodeURIComponent(goalId)}`, { method: "DELETE" });
+}
+
 export type Sequence = {
   id: string;
   name: string;
@@ -805,6 +877,7 @@ export type Sequence = {
   effectiveStatusSummary: string;
   acceptsNewEnrollments: boolean;
   createdAt: string;
+  labels?: string[];
 };
 
 export type SequenceEmailStep = {
@@ -848,6 +921,7 @@ export type SequenceEdge = {
 
 export type SequenceDetail = Sequence & {
   trigger: string;
+  description?: string | null;
   emails: SequenceEmailStep[];
   nodes: SequenceNode[];
   edges: SequenceEdge[];
@@ -1074,6 +1148,20 @@ export async function deleteSequence(id: string): Promise<void> {
   await request(`/sequences/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
+export async function updateSequenceLabels(id: string, labels: string[]): Promise<SequenceDetail> {
+  // Sequenzy's validation only counts "labels" as a value to set when at
+  // least one other recognized field is present in the same request
+  // (confirmed live — sending {labels} alone returns "No values to set"), so
+  // this round-trips the sequence's own current description as a harmless
+  // no-op alongside it.
+  const current = await getSequence(id);
+  await request(`/sequences/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: { description: current.description ?? "", labels },
+  });
+  return getSequence(id);
+}
+
 export async function enrollInSequence(id: string, emails: string[]): Promise<{ enrolled: number; skipped: number; notFound: string[] }> {
   return request(`/sequences/${encodeURIComponent(id)}/enroll`, { method: "POST", body: { emails } });
 }
@@ -1091,16 +1179,32 @@ export async function getSequenceStats(id: string): Promise<{
   clicked: number;
   openRate: number;
   clickRate: number;
+  conversions: number;
+  revenueCents: number;
   enrollmentCounts: { active: number; waiting: number; total: number };
   steps: SequenceStepStats[];
 }> {
   const res = await request<{
     success: boolean;
-    stats: { sent: number; opened: number; clicked: number; openRate: number; clickRate: number };
+    stats: {
+      sent: number;
+      opened: number;
+      clicked: number;
+      openRate: number;
+      clickRate: number;
+      conversions?: number;
+      revenueCents?: number;
+    };
     enrollmentCounts: { active: number; waiting: number; total: number };
     steps: SequenceStepStats[];
   }>(`/sequences/${encodeURIComponent(id)}/stats`, { query: { period: "30d" } });
-  return { ...res.stats, enrollmentCounts: res.enrollmentCounts, steps: res.steps ?? [] };
+  return {
+    ...res.stats,
+    conversions: res.stats.conversions ?? 0,
+    revenueCents: res.stats.revenueCents ?? 0,
+    enrollmentCounts: res.enrollmentCounts,
+    steps: res.steps ?? [],
+  };
 }
 
 export async function renderSequenceStep(
