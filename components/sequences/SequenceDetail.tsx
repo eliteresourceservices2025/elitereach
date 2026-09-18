@@ -12,6 +12,7 @@ import type {
 } from "@/lib/sequenzy";
 import type { EmailBrand } from "@/lib/email-template";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { EnrollContactsModal } from "./EnrollContactsModal";
 import { SequenceBuilder } from "./builder/SequenceBuilder";
 
 type Stats = {
@@ -44,6 +45,7 @@ export function SequenceDetail({
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [enrollModalMode, setEnrollModalMode] = useState<"enroll" | "test" | null>(null);
 
   useEffect(() => {
     fetch(`/api/sequences/${sequence.id}/stats`)
@@ -82,9 +84,21 @@ export function SequenceDetail({
           <p className="text-sm text-gray-700">{sequence.effectiveStatusSummary}</p>
         </div>
         <button
+          onClick={() => setEnrollModalMode("test")}
+          className="ml-auto rounded-lg border border-elite-violet/30 px-4 py-2 text-sm font-medium text-elite-navy-dark hover:bg-elite-violet/5"
+        >
+          Test sequence
+        </button>
+        <button
+          onClick={() => setEnrollModalMode("enroll")}
+          className="rounded-lg border border-elite-violet/30 px-4 py-2 text-sm font-medium text-elite-navy-dark hover:bg-elite-violet/5"
+        >
+          Enroll contacts
+        </button>
+        <button
           onClick={toggleEnabled}
           disabled={busy}
-          className="ml-auto rounded-lg bg-elite-violet px-4 py-2 text-sm font-medium text-white hover:bg-elite-navy-dark disabled:opacity-60"
+          className="rounded-lg bg-elite-violet px-4 py-2 text-sm font-medium text-white hover:bg-elite-navy-dark disabled:opacity-60"
         >
           {sequence.acceptsNewEnrollments ? "Disable" : "Enable"}
         </button>
@@ -114,6 +128,10 @@ export function SequenceDetail({
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(false)}
         />
+      )}
+
+      {enrollModalMode && (
+        <EnrollContactsModal sequenceId={sequence.id} mode={enrollModalMode} onClose={() => setEnrollModalMode(null)} />
       )}
     </div>
   );

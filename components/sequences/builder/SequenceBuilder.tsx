@@ -385,6 +385,7 @@ export function SequenceBuilder({
 
       {selectedNode && (
         <NodeConfigPanel
+          sequenceId={sequence.id}
           node={selectedNode}
           email={selectedEmail}
           allTags={allTags}

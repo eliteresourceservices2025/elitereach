@@ -6,11 +6,13 @@ import type { EmailBrand } from "@/lib/email-template";
 import { wrapBrandedEmail } from "@/lib/email-template";
 import { RichTextEditor } from "@/components/email/RichTextEditor";
 import { DevicePreview } from "@/components/email/DevicePreview";
+import { AIGenerator } from "@/components/email/AIGenerator";
 import { EventNameField } from "../EventNameField";
 import { DelayFields, emptyDelay } from "./DelayFields";
 import { isBranchNode, isSupportedNodeType, isTriggerNode } from "./types";
 
 export function NodeConfigPanel({
+  sequenceId,
   node,
   email,
   allTags,
@@ -22,6 +24,7 @@ export function NodeConfigPanel({
   onDelete,
   onClose,
 }: {
+  sequenceId: string;
   node: SequenceNode;
   email?: SequenceEmailStep;
   allTags: Tag[];
@@ -88,7 +91,16 @@ export function NodeConfigPanel({
   switch (node.nodeType) {
     case "action_email":
       return (
-        <EmailPanel email={email} theme={theme} brand={brand} onSave={onSave} onDelete={onDelete} onClose={onClose} />
+        <EmailPanel
+          sequenceId={sequenceId}
+          nodeId={node.id}
+          email={email}
+          theme={theme}
+          brand={brand}
+          onSave={onSave}
+          onDelete={onDelete}
+          onClose={onClose}
+        />
       );
     case "logic_delay":
       return <DelayPanel node={node} onSave={onSave} onDelete={onDelete} onClose={onClose} />;
@@ -152,6 +164,8 @@ function PanelActions({
 }
 
 function EmailPanel({
+  sequenceId,
+  nodeId,
   email,
   theme,
   brand,
@@ -159,6 +173,8 @@ function EmailPanel({
   onDelete,
   onClose,
 }: {
+  sequenceId: string;
+  nodeId: string;
   email?: SequenceEmailStep & { previewText?: string | null };
   theme?: EmailTheme;
   brand?: EmailBrand;
@@ -166,11 +182,15 @@ function EmailPanel({
   onDelete: () => void;
   onClose: () => void;
 }) {
+  const [mode, setMode] = useState<"write" | "ai">("write");
   const [subject, setSubject] = useState(email?.subject ?? "");
   const [previewText, setPreviewText] = useState(email?.previewText ?? "");
   const [html, setHtml] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [testSending, setTestSending] = useState(false);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
   const previewHtml = wrapBrandedEmail({ previewText, bodyHtml: html || "<p></p>", theme, brand });
 
   async function handleSave() {
@@ -182,8 +202,51 @@ function EmailPanel({
     }
   }
 
+  async function handleSendTest() {
+    if (!testEmail.trim()) return;
+    setTestSending(true);
+    setTestMessage(null);
+    try {
+      await handleSave(); // send whatever's on screen, not a stale saved version
+      const res = await fetch(`/api/sequences/${sequenceId}/nodes/${nodeId}/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails: [testEmail.trim()] }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setTestMessage(res.ok ? `Test email sent to ${testEmail.trim()}.` : (data.error ?? "Failed to send test email."));
+    } finally {
+      setTestSending(false);
+    }
+  }
+
   return (
     <Panel title="Send Email" onClose={onClose}>
+      <div className="flex gap-1 rounded-lg bg-gray-100 p-1 text-xs">
+        {(["write", "ai"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMode(m)}
+            className={`flex-1 rounded-md py-1.5 font-medium transition ${
+              mode === m ? "bg-white text-elite-navy-dark shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {m === "write" ? "Write" : "Describe with AI"}
+          </button>
+        ))}
+      </div>
+
+      {mode === "ai" && (
+        <AIGenerator
+          onGenerated={(result) => {
+            setSubject(result.subject);
+            setPreviewText(result.previewText);
+            setHtml(result.bodyHtml);
+          }}
+        />
+      )}
+
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-gray-500">Subject line</span>
         <input
@@ -210,6 +273,26 @@ function EmailPanel({
         {showPreview ? "Hide preview" : "Preview"}
       </button>
       {showPreview && <DevicePreview html={previewHtml} />}
+
+      <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
+        <input
+          type="email"
+          value={testEmail}
+          onChange={(e) => setTestEmail(e.target.value)}
+          placeholder="you@example.com"
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+        />
+        <button
+          type="button"
+          onClick={handleSendTest}
+          disabled={testSending || !testEmail.trim()}
+          className="whitespace-nowrap rounded-lg border border-elite-violet/30 px-3 py-1.5 text-sm font-medium text-elite-navy-dark hover:bg-elite-violet/5 disabled:opacity-60"
+        >
+          {testSending ? "Sending..." : "Send test"}
+        </button>
+      </div>
+      {testMessage && <p className="text-xs text-gray-500">{testMessage}</p>}
+
       <PanelActions onSave={handleSave} onDelete={onDelete} saving={saving} />
     </Panel>
   );

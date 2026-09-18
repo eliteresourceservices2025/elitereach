@@ -6,6 +6,8 @@ import type { CustomAttributeUpdate, EventSchemaSummary, InsertableStep, Sequenc
 import { ADD_STEP_TYPES, type SupportedNodeType } from "./types";
 import { DelayFields, emptyDelay } from "./DelayFields";
 import { EventNameField } from "../EventNameField";
+import { AIGenerator } from "@/components/email/AIGenerator";
+import { RichTextEditor } from "@/components/email/RichTextEditor";
 
 export function AddStepModal({
   allTags,
@@ -25,7 +27,10 @@ export function AddStepModal({
   onCancel: () => void;
 }) {
   const [type, setType] = useState<SupportedNodeType | null>(initialType);
+  const [emailMode, setEmailMode] = useState<"write" | "ai">("write");
   const [subject, setSubject] = useState("");
+  const [previewText, setPreviewText] = useState("");
+  const [html, setHtml] = useState("");
   const [delay, setDelay] = useState(emptyDelay());
   const [eventName, setEventName] = useState("");
   const [timeoutDays, setTimeoutDays] = useState(7);
@@ -56,7 +61,7 @@ export function AddStepModal({
     switch (type) {
       case "action_email":
         if (!subject.trim()) return setError("Subject is required.");
-        step = { subject, html: "<p></p>" };
+        step = { subject, html: html || "<p></p>", previewText: previewText || undefined };
         break;
       case "logic_delay":
         if (delay.days === 0 && delay.hours === 0 && delay.minutes === 0) return setError("Enter a delay greater than zero.");
@@ -138,16 +143,53 @@ export function AddStepModal({
             </button>
 
             {type === "action_email" && (
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-gray-500">Subject line</span>
-                <input
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  autoFocus
-                />
-                <span className="mt-1 block text-xs text-gray-400">You&apos;ll write the body after adding this step.</span>
-              </label>
+              <div className="space-y-3">
+                <div className="flex gap-1 rounded-lg bg-gray-100 p-1 text-xs">
+                  {(["write", "ai"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setEmailMode(m)}
+                      className={`flex-1 rounded-md py-1.5 font-medium transition ${
+                        emailMode === m ? "bg-white text-elite-navy-dark shadow-sm" : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {m === "write" ? "Write" : "Describe with AI"}
+                    </button>
+                  ))}
+                </div>
+
+                {emailMode === "ai" && (
+                  <AIGenerator
+                    onGenerated={(result) => {
+                      setSubject(result.subject);
+                      setPreviewText(result.previewText);
+                      setHtml(result.bodyHtml);
+                    }}
+                  />
+                )}
+
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-gray-500">Subject line</span>
+                  <input
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    autoFocus
+                  />
+                </label>
+
+                {emailMode === "ai" && html ? (
+                  <div>
+                    <span className="mb-1 block text-xs font-medium text-gray-500">
+                      Body (generated — you can still edit after adding)
+                    </span>
+                    <RichTextEditor value={html} onChange={setHtml} />
+                  </div>
+                ) : (
+                  <span className="block text-xs text-gray-400">You&apos;ll write the body after adding this step.</span>
+                )}
+              </div>
             )}
 
             {type === "logic_delay" && <DelayFields value={delay} onChange={setDelay} />}
