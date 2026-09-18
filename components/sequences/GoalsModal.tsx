@@ -2,24 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { EventSchemaSummary, SequenceGoal, Tag } from "@/lib/sequenzy";
+import { formatAttributionWindow, goalTriggerSummary } from "@/lib/goal-format";
 import { EventNameField } from "./EventNameField";
-
-function formatAttributionWindow(hours: number): string {
-  if (hours % 24 === 0) {
-    const days = hours / 24;
-    return `${days} day${days === 1 ? "" : "s"}`;
-  }
-  return `${hours} hour${hours === 1 ? "" : "s"}`;
-}
-
-function goalTriggerSummary(goal: SequenceGoal): string {
-  if (goal.triggerType === "event") {
-    const revenue = goal.eventPropertyName ? `, tracking "${goal.eventPropertyLabel || goal.eventPropertyName}"` : "";
-    return `Event: ${goal.triggerEventName}${revenue}`;
-  }
-  if (goal.triggerType === "tag_added") return `Tag added: ${goal.triggerTagName}`;
-  return `Attribute changed: ${goal.attributePath}`;
-}
 
 export function GoalsModal({
   sequenceId,
